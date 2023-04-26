@@ -1,0 +1,203 @@
+blueprint:
+  source_url: https://raw.githubusercontent.com/tefracky/homeassistant-blueprints/blueprints/automations/climate_check.yaml
+  name: Heizung
+  description: Temperatur der Heizung wird neu gesetzt
+  domain: automation
+  input:
+    entity_switch:
+      name: Automatisierung an/aus
+      description: Schalter zum Ein-/Ausschalten der Automatisierung (input_boolean.climate_work)
+      selector:
+        entity:
+          domain: input_boolean
+    trigger:
+      name: Auslöser
+      description: Trigger-Entität (input_boolean.climate_work_start_check)
+      selector:
+        entity:
+          domain: input_boolean
+    entity:
+      name: Heizung
+      description: climate.arbeitszimmer
+      selector:
+        entity:
+          domain: climate
+    door_sensor:
+      name: Türsensor
+      description: binary_sensor.door_sensor_work
+      selector:
+        entity:
+          domain: binary_sensor
+    temperature:
+      name: Temperatur-Speicher
+      description: input_number.climate_work
+      selector:
+        entity:
+          domain: input_number
+    temperature_eco:
+      name: Spartemperatur
+      description: input_number.climate_work_eco
+      selector:
+        entity:
+          domain: input_number
+    temperature_comfort:
+      name: Komforttemperatur
+      description: input_number.climate_work_eco
+      selector:
+        entity:
+          domain: input_number
+    room:
+      name: Raumname
+      description: Raumname, der bei der Benachrichtigung angezeigt wird
+      selector:
+        text:
+    preheat:
+      name: Vorheizen für diesen Raum
+      description: input_boolean.preheat_work
+      selector:
+        entity:
+          domain: input_boolean
+
+variables:
+  room: !input 'room'
+  entity: !input 'entity'
+  temperature: !input 'temperature'
+  temperature_eco: !input 'temperature_eco'
+  temperature_comfort: !input 'temperature_comfort'
+  #automation: !input 'automation_entity'
+
+trigger:
+  - platform: state
+    entity_id: !input trigger
+    to: 'on'
+
+#condition:
+#  - condition: state
+#    entity_id: !input trigger
+#    state: 'off'
+
+#condition:
+#  - condition: template # only notify once every 30 seconds at most
+#    value_template: '{{ ( as_timestamp(now()) - as_timestamp(state_attr(state.entity_id, "last_triggered")) |int(0) ) >= 30 }}'
+
+action:
+  - delay: "00:00:30"
+  - choose:
+      - conditions:
+          - condition: state
+            entity_id: !input 'entity_switch'
+            state: 'on'
+          - condition: state
+            entity_id: !input trigger
+            state: 'on'
+        sequence:
+          - service: notify.all_devices
+            data:
+              message: "clear_notification"
+              data:
+                tag: !input 'room'
+          - choose:
+              - conditions:
+                  - condition: state
+                    entity_id: !input 'door_sensor'
+                    state: 'on'
+                sequence:
+                  - service: climate.set_hvac_mode
+                    target:
+                      entity_id: !input 'entity'
+                    data:
+                      hvac_mode: 'off'
+              #- conditions:
+              #    - condition: state
+              #      entity_id: input_boolean.vacation
+              #      state: 'on'
+              #  sequence:
+              #    - service: climate.set_temperature
+              #      target:
+              #        entity_id: !input 'entity'
+              #      data:
+              #        temperature: '{{ states(temperature_eco) | float(0) }}
+              #- conditions:
+              #    - condition: state
+              #      entity_id: !input 'door_sensor'
+              #      state: 'off'
+              #  sequence:
+            default:
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: >-
+                          {{ (state_attr(entity, 'temperature') | float(0)) > (states(temperature_eco) | float(0)) or (states(temperature) | float(0)) > (states(temperature_eco) | float(0)) }}
+                      #- condition: numeric_state
+                      #  entity_id: !input 'entity'
+                      #  attribute: temperature
+                      #  #Platzhalter funktioniert nicht
+                      #  #above: '{{ states(temperature_eco) | float }}'
+                      #  above: 16
+                      - condition: state
+                        entity_id: binary_sensor.zu_hause
+                        state: 'off'
+                        for:
+                          hours: 1
+                          minutes: 0
+                          seconds: 0
+                      - condition: state
+                        entity_id: input_boolean.vacation
+                        state: 'off'
+                      - condition: or
+                        conditions:
+                          - condition: state
+                            entity_id: input_boolean.preheat
+                            state: 'off'
+                          - condition: state
+                            entity_id: !input preheat
+                            state: 'off'
+                    sequence:
+                      - service: climate.set_temperature
+                        target:
+                          entity_id: !input 'entity'
+                        data:
+                          temperature: '{{ states(temperature_eco) | float(0) }}'
+                      - service: notify.all_devices
+                        data:
+                          message: >-
+                            Die Heizung in {{ room }} wurde ausgeschaltet
+                          title: >-
+                            Heizung {{ room }}
+                          data:
+                            clickAction: 'entityId:{{ entity }}'
+                            actions:
+                              - action: !input 'room'
+                                title: Einschalten
+                            tag: !input 'room'
+                            group: "climates"
+                            channel: "Climates"
+                  - conditions:
+                      - condition: template
+                        value_template: >-
+                          {{ ((state_attr(entity, 'temperature') | float(0)) <= (states(temperature_comfort) | float(0))) or ((states(temperature) | float(0)) < (states(temperature_comfort) | float(0))) }}
+                    sequence:
+                      - service: climate.set_temperature
+                        target:
+                          entity_id: !input 'entity'
+                        data:
+                          temperature: '{{ states(temperature) | float(0) }}'
+                default:
+                  - service: notify.all_devices
+                    data:
+                      message: >-
+                        Die Heizung in {{ room }} wurde nicht geschaltet
+                      title: >-
+                        Heizung {{ room }}
+                      data:
+                        clickAction: 'entityId:{{ entity }}'
+                        tag: !input 'room'
+                        group: "climates"
+                        channel: "Climates"
+    default: []
+  - delay: "00:00:30"
+  - service: input_boolean.turn_off
+    target:
+      entity_id: !input trigger
+mode: single
+max_exceeded: silent

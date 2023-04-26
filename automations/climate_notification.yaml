@@ -1,0 +1,53 @@
+blueprint:
+  source_url: https://raw.githubusercontent.com/tefracky/homeassistant-blueprints/blueprints/automations/climate_notification.yaml
+  name: Heizungs-Benachrichtigung geklickt
+  description: Heizungs-Benachrichtigung geklickt
+  domain: automation
+  input:
+    temperature_comfort:
+      name: Komforttemperatur
+      description: input_number.climate_work_comfort
+      selector:
+        entity:
+          domain: input_number
+    temperature:
+      name: Solltemperature
+      description: input_number.climate_work
+      selector:
+        entity:
+          domain: input_number
+    entity:
+      name: Heizung
+      description: climate.arbeitszimmer
+      selector:
+        entity:
+          domain: climate
+    room:
+      name: Raumname
+      description: Raumname, der bei der Benachrichtigung angezeigt wird
+      selector:
+        text:
+
+variables:
+  #temperature: !input 'temperature_comfort'
+  temperature: !input 'temperature'
+
+trigger:
+  - platform: event
+    event_type: mobile_app_notification_action
+    event_data:
+      action: !input 'room'
+
+action:
+  - service: notify.all_devices
+    data:
+      message: "clear_notification"
+      data:
+        tag: !input 'room'
+  - service: climate.set_temperature
+    target:
+      entity_id: !input 'entity'
+    data:
+      temperature: '{{ states(temperature) | float}}'
+
+mode: single

@@ -1,0 +1,53 @@
+blueprint:
+  source_url: https://raw.githubusercontent.com/tefracky/homeassistant-blueprints/blueprints/automations/heater_daily_consumption.yaml
+  name: Heizung täglicher Verbrauch
+  description: Setzt den Verbrauch bzw. die Kosten der Heizung vom Vortag in eine input_number. Diese kann dann als Sensor für den täglichen Verbrauch verwendet werden.
+  domain: automation
+  input:
+    automation_id:
+      name: Automatisierungs-ID
+      description: Id dieser Automatisierung (automation.heizung_energieverbrauch_tag_gesamt)
+      selector:
+        text:
+          type: text
+    statistics_sensor:
+      name: Statistiksensor
+      description: Der Sensor, welcher genutzt wird, um die input_number zu setzen (sensor.heizung_energieverbrauch_tag_gesamt_statistik_24h)
+      selector:
+        entity:
+          domain: sensor
+    input_number:
+      name: Eingabenummer
+      description: Eingabenummer, die auf den gewählten Sensorwert gesetzt wird (input_number.energy_consumption_total_daily)
+      selector:
+        entity:
+          domain: input_number
+variables:
+  automation_id: !input 'automation_id'
+  statistics_sensor: !input 'statistics_sensor'
+  input_number: !input 'input_number'
+trigger:
+  - platform: time
+    at: "23:59:00"
+  - platform: time
+    at: "00:00:00"
+  - platform: time
+    at: "00:01:00"
+  - platform: time_pattern
+    minutes: "30"
+condition:
+  - condition: template
+    value_template: >-
+      {% set midnight_last_day = 86400*((as_timestamp(now())/86400) | int(0)) %}
+      {% set last_triggered = (as_timestamp(state_attr(automation_id, 'last_triggered'), 0) | int(0)) %}
+
+      {{ last_triggered < midnight_last_day}}
+action:
+  - service: input_number.set_value
+    data:
+      value: >-
+        {{ states(statistics_sensor) | float(0) }}
+    target:
+      entity_id: "{{ input_number }}"
+mode: single
+max_exceeded: silent

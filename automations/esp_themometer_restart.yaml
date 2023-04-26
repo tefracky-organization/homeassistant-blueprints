@@ -1,0 +1,52 @@
+blueprint:
+  source_url: https://raw.githubusercontent.com/tefracky/homeassistant-blueprints/blueprints/automations/ems_thermometer_restart.yaml
+  name: ESP Thermometer Neustart
+  description: ESP-Thermometer neu starten, wenn Temperatur, eCO2 oder TVOC zu niedrig
+  domain: automation
+  input:
+    button:
+      name: Neustart-Button
+      description: button.thermometer_wohnzimmer_neustart
+      selector:
+        entity:
+          domain: button
+    temperature:
+      name: Temperatursensor
+      description: sensor.thermometer_wohnzimmer_temperatur
+      selector:
+        entity:
+          domain: sensor
+          device_class: temperature
+    eco2:
+      name: eCO2-Sensor
+      description: sensor.thermometer_wohnzimmer_eco2
+      selector:
+        entity:
+          domain: sensor
+          device_class: carbon_dioxide
+    tvoc:
+      name: TVOC-Sensor
+      description: sensor.thermometer_wohnzimmer_tvoc
+      selector:
+        entity:
+          domain: sensor
+          device_class: volatile_organic_compounds
+trigger:
+  - platform: numeric_state
+    entity_id: !input 'temperature'
+    below: '10'
+    for: 00:05:00
+  - platform: numeric_state
+    entity_id: !input 'eco2'
+    below: '410'
+    for: 00:05:00
+  - platform: numeric_state
+    entity_id: !input 'temperature'
+    below: '10'
+    for: 00:05:00
+action:
+  - service: switch.turn_on
+    target:
+      entity_id: !input 'tvoc'
+mode: single
+max_exceeded: silent

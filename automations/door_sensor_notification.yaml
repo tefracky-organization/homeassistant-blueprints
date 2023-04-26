@@ -1,0 +1,92 @@
+blueprint:
+  source_url: https://raw.githubusercontent.com/tefracky/homeassistant-blueprints/blueprints/automations/door_sensor_notification.yaml
+  name: Türsensor
+  description: Benachrichtigung, wenn der Türsensor länger als 15 Minuten offen ist
+  domain: automation
+  input:
+    door_sensor:
+      name: Türsensor
+      description: Schalter, welcher den Status des Türsensors angibt (input_boolean.door_sensor_work)
+      selector:
+        entity:
+          domain: input_boolean
+    room:
+      name: Raumname
+      description: Raumname, der bei der Benachrichtigung angezeigt wird (Arbeitszimmer)
+      selector:
+        text:
+    room_en:
+      name: Raumname englisch
+      description: Raumname in englisch und klein geschrieben (work)
+      selector:
+        text:
+
+variables:
+  sensor: !input 'input_boolean'
+  room: !input 'room'
+  room_en: !input 'room_en'
+
+trigger:
+  - platform: state
+    entity_id: !input door_sensor
+    to: 'off'
+  - platform: state
+    entity_id: !input door_sensor
+    to: 'on'
+    for:
+      hours: 0
+      minutes: 15
+      seconds: 0
+
+action:
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: !input door_sensor
+        state: 'on'
+        for:
+          hours: 0
+          minutes: 15
+          seconds: 0
+      sequence:
+      - service: notify.all_devices
+        data:
+          message: "{{ room }} ist schon länger als 15 Minuten offen"
+          data:
+            clickAction: entityId:{{ sensor }}
+            channel: Türsensor {{ room }}
+            persistent: true
+            importance: high
+            sticky: 'true'
+            actions:
+            - action: door_sensor_{{ room_en }}_dismiss
+              title: Schließen
+            - action: door_sensor_{{ room_en }}_close
+              title: Ausschalten
+            tag: Türsensor {{ room }}
+          title: Türsensor {{ room }}
+      - wait_for_trigger:
+        - platform: event
+          event_type: mobile_app_notification_action
+          event_data:
+            action: door_sensor_{{ room_en }}_dismiss
+        - platform: event
+          event_type: mobile_app_notification_action
+          event_data:
+            action: door_sensor_{{ room_en }}_close
+      - choose:
+        - conditions: '{{ wait.trigger.event.data.action == door_sensor_{{ room_en }}_close }}'
+          sequence:
+          - service: cover.close_cover
+            target:
+              entity_id: cover.some_cover
+          - service: input_boolean.turn_off
+            data: {}
+            target:
+              entity_id: !input door_sensor
+      - service: notify.all_devices
+        data:
+          message: clear_notification
+          data:
+            tag: Türsensor {{ room }}
+mode: restart

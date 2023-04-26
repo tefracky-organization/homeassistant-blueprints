@@ -1,0 +1,211 @@
+blueprint:
+  source_url: https://raw.githubusercontent.com/tefracky/homeassistant-blueprints/blueprints/scripts/notification.yaml
+  name: Benachrichtigungen
+  description: >-
+    Für jede Aktion können Sie eine URL, eine Anwendung auf dem Gerät öffnen oder eine Lovelace-Ansicht/Dashboard laden.
+    Wenn Sie vorhaben, eine Lovelace-Ansicht zu verwenden, wäre das Format /lovelace/test, wobei Test durch Ihren definierten Pfad in der definierten Ansicht ersetzt wird.
+    Wenn Sie vorhaben, ein Lovelace-Dashboard zu verwenden, wäre das Format /lovelace-dashboard/view, wobei /lovelace-dashboard/ durch Ihre definierte Dashboard-URL ersetzt wird und view durch den definierten Pfad innerhalb dieses Dashboards ersetzt wird.
+    Um die zu öffnende Anwendung auszuwählen, stellen Sie dem Paketnamen app:// voran.
+    Wenn auf dem Gerät die Anwendung nicht installiert ist, wird die Home Assistant-Anwendung mit der Standardseite geöffnet.
+    Wenn Sie eine Aktion und einen URI für eine Schaltfläche definieren, hat der URI Vorrang vor der Aktion.
+  domain: script
+  input:
+    notify_device:
+      name: Benachrichtigungsdienst
+      description: Name des Benachrichtigungsdienstes (z. B. notify.mobile_app_....).
+      default: "notify.all_devices"
+      selector:
+        text:
+    notification_title:
+      name: "Titel"
+      description: "Der Titel der Schaltfläche, die in der Benachrichtigung angezeigt wird."
+      default: "Titel"
+      selector:
+        text:
+    notification_message:
+      name: "Nachricht"
+      description: "Der Nachrichtentext"
+      default: "Nachricht"
+      selector:
+        text:
+    notification_tag:
+      name: "Benachrichtigungs-Tag"
+      description: "Benachrichtigungs-Tag zum Aktualisieren und Verwerfen der Benachrichtigung"
+      default: "Allgemeine Benachrichtigung"
+      selector:
+        text:
+    
+    persistent_notification:
+      name: Permanente Benachrichtigung erstellen?
+      description: Dauerhafte Benachrichtigungen können nicht durch Wegwischen geschlossen werden
+      default: false
+      selector:
+        boolean:
+
+    timeout:
+        name: "Timeout"
+        default: {}
+        selector:
+          duration:
+
+# Klick-Aktion
+    action_click_uri:
+      name: URI für Klick-Aktion
+      description: URI für Klick-Aktion
+      default: "/lovelace"
+
+# Lösch-Aktion
+    action_dismiss:
+      name: Lösch-Aktion
+      description: "Aktion, welche ausgeführt wird, wenn die Benachrichtigung gelöscht wird"
+      default: []
+      selector:
+        action:
+
+# Aktion 1
+    action_1_title:
+      name: Name Aktion 1
+      description: Name of the first button
+      default: ""
+      
+    action_1_uri:
+      name: URI für Aktion 1 (Optional)
+      description: Bezeichnung der 1. Aktion
+      default: ""
+
+    first_action:
+      name: Action 1
+      description: "Aktion, die ausgeführt werden soll, wenn auf die 1. Aktion geklickt wird"
+      default: []
+      selector:
+        action:
+
+# Aktion 2
+    action_2_title:
+      name: Name Aktion 2
+      description: Bezeichnung der 2. Aktion
+      default: ""
+
+    action_2_uri:
+      name: URI für Aktion 1 (Optional)
+      description: Optionale Uri für 2. Aktion
+      default: ""
+
+    second_action:
+      name: Action 2
+      description: "Aktion, die ausgeführt werden soll, wenn auf die 2. Aktion geklickt wird"
+      default: []
+      selector:
+        action:
+
+# Aktion 3    
+    action_3_title:
+      name: Name Aktion 3
+      description: Bezeichnung der 3. Aktion
+      default: ""
+      
+    action_3_uri:
+      name: URI für Aktion 3 (Optional)
+      description: Optionale Uri für 3. Aktion
+      default: ""
+
+    third_action:
+      name: Action 3
+      description: "Aktion, die ausgeführt werden soll, wenn auf die 3. Aktion geklickt wird"
+      default: []
+      selector:
+        action:
+
+mode: restart
+max_exceeded: silent
+
+sequence:
+  - alias: "Variablen einrichten"
+    variables:
+      notify_device: !input notify_device      
+      notification_title: !input notification_title
+      notification_message: !input notification_message
+      notification_tag: !input notification_tag
+      persistent_notification: !input persistent_notification
+      action_1_title: !input action_1_title
+      action_1_uri: !input action_1_uri
+      first_action: !input first_action
+      action_2_title: !input action_2_title
+      action_2_uri: !input action_2_uri
+      second_action: !input second_action
+      action_3_title: !input action_3_title
+      action_3_uri: !input action_3_uri
+      third_action: !input third_action
+
+  - alias: "Benachrichtigung senden"
+    service: !input notify_device
+    data:
+      message: "{{ notification_message }}"
+      title: "{{ notification_title }}"
+      data:
+        click_action: !input action_click_uri
+        persistent: "{{ persistent_notification }}"
+        tag: !input notification_tag
+        actions: >
+          {% set titles = [action_1_title, action_2_title, action_3_title] %}
+          {% set uris = [action_1_uri, action_2_uri, action_3_uri] %}
+          {% set actions = namespace(data = []) %}
+
+          {% for title in titles %}
+            {% if title|length %}
+              {% set uri = uris[loop.index - 1] %}
+              {% set action_name = "action" + loop.index|string %}
+              {% set action = {
+                "action": "URI" if uri|length else action_name,
+                "title": title,
+                "uri": uri 
+                }
+              %}
+              {% set actions.data = actions.data + [action] %}
+            {% endif %}
+          {% endfor %}
+          {{ actions.data }}
+
+
+  # Auf Aktion warten
+  - alias: "Auf Antwort warten"
+    continue_on_error: true
+    wait_for_trigger:
+      - platform: event
+        event_type: mobile_app_notification_action
+        event_data:
+          tag: !input notification_tag
+      - platform: event
+        event_type: mobile_app_notification_cleared
+        event_data:
+          tag: !input notification_tag
+    timeout: !input timeout
+
+  # Aktionen ausführen
+  - choose:
+    - conditions: '{{ wait.trigger.event.event_type == "mobile_app_notification_cleared" }}' 
+      sequence: 
+        - service: !input notify_device
+          data:
+            message: clear_notification
+            data:
+              tag: !input notification_tag
+        - choose:
+          default: !input action_dismiss
+
+    - conditions: "{{ wait.remaining == 0}}"
+      sequence: 
+        - service: !input notify_device
+          data:
+            message: clear_notification
+            data:
+              tag: !input notification_tag
+        - choose:
+          default: !input action_dismiss
+
+    - conditions: "{{ wait.trigger.event.data.action == 'action1' }}"
+      sequence: !input first_action
+    - conditions: "{{ wait.trigger.event.data.action == 'action2' }}"
+      sequence: !input second_action
+    - conditions: "{{ wait.trigger.event.data.action == 'action3' }}"
+      sequence: !input third_action

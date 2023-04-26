@@ -1,0 +1,190 @@
+blueprint:
+  source_url: https://raw.githubusercontent.com/tefracky/homeassistant-blueprints/blueprints/automations/firebase_upload.yaml
+  name: Firebase upload Thermometer
+  description: Werte von ESP-Thermometern auf Firebase hochladen.
+  domain: automation
+  input:
+    device:
+      name: Gerätename
+      description: Wohnzimmer
+      selector:
+        text:
+    temperature:
+      name: Temperatursensor
+      description: sensor.thermometer_wohnzimmer_temperatur
+      selector:
+        entity:
+          domain: sensor
+          device_class: temperature
+    humidity:
+      name: Feuchtigkeitssensor
+      description: sensor.thermometer_wohnzimmer_luftfeuchtigkeit
+      selector:
+        entity:
+          domain: sensor
+          device_class: humidity
+    eco2:
+      name: CO2-Konzentration
+      description: sensor.thermometer_wohnzimmer_eco2
+      selector:
+        entity:
+          domain: sensor
+          device_class: eco2
+    tvoc:
+      name: VOC-Konzentration
+      description: sensor.thermometer_wohnzimmer_tvoc
+      selector:
+        entity:
+          domain: sensor
+          device_class: tvoc
+    iaq:
+      name: Luftqualität
+      description: sensor.thermometer_wohnzimmer_iaq
+      selector:
+        entity:
+          domain: sensor
+          device_class: aqi
+    iaqtext:
+      name: Luftqualität Test
+      description: sensor.thermometer_wohnzimmer_luftqualitat
+      selector:
+        entity:
+          domain: sensor
+    delay:
+      name: Minimale Wartezeit für erneuten Upload
+      description: 00:01:00
+      selector:
+        time:
+
+trigger:
+- platform: state
+  entity_id: !input temperature
+- platform: state
+  entity_id: !input humidity
+- platform: state
+  entity_id: !input eco2
+- platform: state
+  entity_id: !input tvoc
+- platform: state
+  entity_id: !input iaq
+- platform: state
+  entity_id: !input iaqtext
+
+variables:
+  temperature: !input temperature
+  humidity: !input humidity
+  eco2: !input eco2
+  tvoc: !input tvoc
+  iaq: !input iaq
+  iaqtext: !input iaqtext
+  
+condition:
+  - condition: not
+    conditions:
+      - condition: state
+        entity_id: !input temperature
+        state: unavailable
+      - condition: state
+        entity_id: !input temperature
+        state: unkown
+      - condition: state
+        entity_id: !input temperature
+        state: unbekannt
+  - condition: not
+    conditions:
+      - condition: state
+        entity_id: !input humidity
+        state: unavailable
+      - condition: state
+        entity_id: !input temperature
+        state: unkown
+      - condition: state
+        entity_id: !input temperature
+        state: unbekannt
+  - condition: not
+    conditions:
+      - condition: state
+        entity_id: !input iaq
+        state: unavailable
+      - condition: state
+        entity_id: !input temperature
+        state: unkown
+      - condition: state
+        entity_id: !input temperature
+        state: unbekannt
+  - condition: not
+    conditions:
+      - condition: state
+        entity_id: !input iaqtext
+        state: unavailable
+      - condition: state
+        entity_id: !input temperature
+        state: unkown
+      - condition: state
+        entity_id: !input temperature
+        state: unbekannt
+
+action:
+- service: rest_command.update_firebase_homeassistant
+  data:
+    temp: |
+      {{ states(temperature) }}
+    hum: |
+      {{ states(humidity) }}
+    eco2: |
+      {{ states(eco2) }}
+    tvoc: |
+      {{ states(tvoc) }}
+    iaq: |
+      {{ states(iaq) }}
+    iaqtext: |
+      {{ states(iaqtext) }}
+    device: !input 'device'
+- service: rest_command.update_firebase_akt
+  data:
+    temp: |
+      {{ states(temperature) }}
+    hum: |
+      {{ states(humidity) }}
+    eco2: |
+      {{ states(eco2) }}
+    tvoc: |
+      {{ states(tvoc) }}
+    iaq: |
+      {{ states(iaq) }}
+    iaqtext: |
+      {{ states(iaqtext) }}
+    device: !input 'device'
+- service: rest_command.update_firebase_act
+  data:
+    temp: |
+      {{ states(temperature) }}
+    hum: |
+      {{ states(humidity) }}
+    eco2: |
+      {{ states(eco2) }}
+    tvoc: |
+      {{ states(tvoc) }}
+    iaq: |
+      {{ states(iaq) }}
+    iaqtext: |
+      {{ states(iaqtext) }}
+    device: !input 'device'
+- service: rest_command.update_firebase_history
+  data:
+    temp: |
+      {{ states(temperature) }}
+    hum: |
+      {{ states(humidity) }}
+    eco2: |
+      {{ states(eco2) }}
+    tvoc: |
+      {{ states(tvoc) }}
+    iaq: |
+      {{ states(iaq) }}
+    iaqtext: |
+      {{ states(iaqtext) }}
+    device: !input 'device'
+- delay: !input delay
+mode: single
+max_exceeded: silent

@@ -1,0 +1,66 @@
+blueprint:
+  source_url: https://raw.githubusercontent.com/tefracky/homeassistant-blueprints/blueprints/automations/heater_monthly_consumption.yaml
+  name: Heizung monatlicher Verbrauch
+  description: Setzt den Verbrauch bzw. die Kosten der Heizung vom Vormonat in eine input_number. Diese kann dann als Sensor für den monatlichen Verbrauch verwendet werden.
+  domain: automation
+  input:
+    automation_id:
+      name: Automatisierungs-ID
+      description: Id dieser Automatisierung (automation.heizung_energieverbrauch_monat_gesamt)
+      selector:
+        text:
+          type: text
+    statistics_sensor:
+      name: Statistiksensor
+      description: Der Sensor, welcher genutzt wird, um die input_number zu setzen (sensor.heizung_energieverbrauch_monat_gesamt_statistik_31d)
+      selector:
+        entity:
+          domain: sensor
+    input_number:
+      name: Eingabenummer
+      description: Eingabenummer, die auf den gewählten Sensorwert gesetzt wird (input_number.energy_consumption_total_monthly)
+      selector:
+        entity:
+          domain: input_number
+variables:
+  automation_id: !input 'automation_id'
+  statistics_sensor: !input 'statistics_sensor'
+  input_number: !input 'input_number'
+trigger:
+  - platform: time
+    at: "23:59:00"
+  - platform: time
+    at: "00:00:00"
+  - platform: time
+    at: "00:01:00"
+  - platform: time_pattern
+    minutes: "30"
+condition:
+  - condition: or
+    conditions:
+      - condition: and
+        conditions:
+          - condition: template
+            value_template: |
+              {{ ((as_timestamp(now()) | int(0) + 86400)  | timestamp_custom('%d', true)) == 1 }}
+          - condition: time
+            after: "23:55:00"
+      - condition: template
+        value_template: |
+          {{ (now().strftime("%d") | int(0)) == 1 }}
+
+  - condition: template
+    value_template: >-
+      {% set midnight_last_day = 86400*((as_timestamp(now())/86400) | int(0)) %}
+      {% set last_triggered = (as_timestamp(state_attr(automation_id, 'last_triggered'), 0) | int(0)) %}
+
+      {{ last_triggered < midnight_last_day}}
+action:
+  - service: input_number.set_value
+    data:
+      value: >-
+        {{ states(statistics_sensor) | float(0) }}
+    target:
+      entity_id: "{{ input_number }}"
+mode: single
+max_exceeded: silent
