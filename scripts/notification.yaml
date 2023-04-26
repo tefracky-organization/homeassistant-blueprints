@@ -1,5 +1,5 @@
 blueprint:
-  source_url: https://raw.githubusercontent.com/tefracky/homeassistant-blueprints/blueprints/scripts/notification.yaml
+  source_url: "https://raw.githubusercontent.com/tefracky/homeassistant-blueprints/blueprints/scripts/notification.yaml"
   name: Benachrichtigungen
   description: >-
     Für jede Aktion können Sie eine URL, eine Anwendung auf dem Gerät öffnen oder eine Lovelace-Ansicht/Dashboard laden.
