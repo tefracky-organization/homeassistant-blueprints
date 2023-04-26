@@ -1,5 +1,5 @@
 blueprint:
-  source_url: https://raw.githubusercontent.com/tefracky/homeassistant-blueprints/blueprints/automations/heater_daily_consumption.yaml
+  source_url: "https://raw.githubusercontent.com/tefracky/homeassistant-blueprints/blueprints/automations/heater_daily_consumption.yaml"
   name: Heizung täglicher Verbrauch
   description: Setzt den Verbrauch bzw. die Kosten der Heizung vom Vortag in eine input_number. Diese kann dann als Sensor für den täglichen Verbrauch verwendet werden.
   domain: automation
