@@ -1,5 +1,5 @@
 blueprint:
-  source_url: https://raw.githubusercontent.com/tefracky/homeassistant-blueprints/blueprints/automations/door_sensor_notification_binary_sensor.yaml
+  source_url: "https://raw.githubusercontent.com/tefracky/homeassistant-blueprints/blueprints/automations/door_sensor_notification_binary_sensor.yaml"
   name: Türsensor Benachrichtigung (mit binary_sensor)
   description: Benachrichtigung, wenn der Türsensor länger als 15 Minuten offen ist (mit binary_sensor)
   domain: automation
