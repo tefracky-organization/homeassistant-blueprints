@@ -22,7 +22,7 @@ blueprint:
         text:
 
 variables:
-  sensor: !input 'input_boolean'
+  sensor: !input 'door_sensor'
   room: !input 'room'
   room_en: !input 'room_en'
 
