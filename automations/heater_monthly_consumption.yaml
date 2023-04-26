@@ -1,5 +1,5 @@
 blueprint:
-  source_url: https://raw.githubusercontent.com/tefracky/homeassistant-blueprints/blueprints/automations/heater_monthly_consumption.yaml
+  source_url: "https://raw.githubusercontent.com/tefracky/homeassistant-blueprints/blueprints/automations/heater_monthly_consumption.yaml"
   name: Heizung monatlicher Verbrauch
   description: Setzt den Verbrauch bzw. die Kosten der Heizung vom Vormonat in eine input_number. Diese kann dann als Sensor für den monatlichen Verbrauch verwendet werden.
   domain: automation
