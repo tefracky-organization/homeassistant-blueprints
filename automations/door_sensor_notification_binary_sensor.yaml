@@ -76,7 +76,9 @@ action:
           event_data:
             action: door_sensor_{{ room_en }}_close
       - choose:
-        - conditions: '{{ wait.trigger.event.data.action == "door_sensor_" + room_en + "_close" }}'
+        - conditions:
+          - condition: template
+            value_template: "{{ wait.trigger.event.data.action == 'door_sensor_' + roomName + '_close' }}"
           sequence:
           - service: notify.all_devices
             data:
