@@ -57,12 +57,12 @@ action:
             channel: Türsensor {{ room }}
             persistent: true
             importance: high
-            sticky: 'true'
+            sticky: false
             actions:
-            - action: door_sensor_{{ room_en }}_dismiss
-              title: Schließen
             - action: door_sensor_{{ room_en }}_close
-              title: Ausschalten
+              title: Geschlossen
+            - action: door_sensor_{{ room_en }}_dismiss
+              title: Löschen
             tag: Türsensor {{ room }}
           title: Türsensor {{ room }}
       - wait_for_trigger:
@@ -79,13 +79,27 @@ action:
           - condition: template
             value_template: "{{ wait.trigger.event.data.action == 'door_sensor_' + roomName + '_close' }}"
           sequence:
-          - service: cover.close_cover
-            target:
-              entity_id: cover.some_cover
+          - service: notify.all_devices
+            data:
+              message: clear_notification
+              data:
+                tag: Türsensor {{ room }}
           - service: input_boolean.turn_off
             data: {}
             target:
               entity_id: !input door_sensor
+        default:
+          - service: notify.all_devices
+            data:
+              message: clear_notification
+              data:
+                tag: Türsensor {{ room }}
+      - service: notify.all_devices
+        data:
+          message: clear_notification
+          data:
+            tag: Türsensor {{ room }}
+    default:
       - service: notify.all_devices
         data:
           message: clear_notification

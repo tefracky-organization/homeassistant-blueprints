@@ -51,14 +51,13 @@ action:
       sequence:
       - service: notify.all_devices
         data:
-          message: >-
-            {{ room }} ist schon länger als 15 Minuten offen
+          message: "{{ room }} ist schon länger als 15 Minuten offen"
           data:
             clickAction: entityId:{{ sensor }}
             channel: Türsensor {{ room }}
             persistent: true
             importance: high
-            sticky: 'true'
+            sticky: false
             actions:
             - action: door_sensor_{{ room_en }}_close
               title: Geschlossen
