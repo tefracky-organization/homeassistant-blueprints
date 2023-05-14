@@ -1,0 +1,157 @@
+blueprint:
+  source_url: "https://raw.githubusercontent.com/tefracky/homeassistant-blueprints/blueprints/automations/roborock.yaml"
+  name: Roborock
+  description: Roborock pausieren, wenn Reinigung gestartet
+  domain: automation
+  input:
+    roborock:
+      name: Roborock
+      description: Staubsauger, der gesteuert werden soll (vacuum.roborock_unten)
+      selector:
+        entity:
+          domain: vacuum
+    water_box_attached:
+      name: Wasserbehälter angebracht
+      description: Binary-Sensor, der anzeigt, ob der Wasserbehälter angebracht ist (binary_sensor.roborock_unten_water_box_attached)
+      selector:
+        entity:
+          domain: binary_sensor
+    mop_attached:
+      name: Wischmop angebracht
+      description: Binary-Sensor, der anzeigt, ob der Wischmop angebracht ist (binary_sensor.roborock_unten_mop_attached)
+      selector:
+        entity:
+          domain: binary_sensor
+
+variables:
+  roborock: !input 'roborock'
+  roborock_name: "{{ state_attr(roborock, 'friendly_name') }}"
+  roborock_short_name: "{{ roborock.split('.')[1] }}"
+  water_box_attached: !input 'water_box_attached'
+  mop_attached: !input 'mop_attached'
+
+trigger:
+  - platform: state
+    entity_id: !input 'roborock'
+    from: docked
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 5
+    to: cleaning
+    id: started
+  - platform: state
+    entity_id: !input 'roborock'
+    from: paused
+    to: cleaning
+    id: paused
+  - platform: state
+    entity_id: !input 'roborock'
+    from: paused
+    to: cleaning
+    id: returning
+  - platform: state
+    entity_id: !input 'roborock'
+    from: idle
+    id: idle
+    to: cleaning
+  - platform: state
+    entity_id: !input 'roborock'
+    from: idle
+    id: idle
+    to: returning
+
+action:
+  - choose:
+      - conditions:
+          - condition: or
+            conditions:
+              - condition: trigger
+                id: idle
+              - condition: trigger
+                id: paused
+          - condition: or
+            conditions:
+              - condition: state
+                entity_id: !input 'roborock'
+                state: cleaning
+              - condition: state
+                entity_id: !input 'roborock'
+                state: returning
+        sequence:
+          - service: notify.all_devices
+            data:
+              message: clear_notification
+              data:
+                tag: "{{ roborock_name }}"
+      - conditions:
+          - condition: trigger
+            id: started
+          - condition: state
+            entity_id: !input 'water_box_attached'
+            state: "off"
+          - condition: state
+            entity_id: !input 'mop_attached'
+            state: "off"
+        sequence:
+          - service: vacuum.pause
+            data: {}
+            target:
+              entity_id: !input 'roborock'
+          - service: notify.all_devices
+            data:
+              title: Staubsauger pausiert
+              message: "{{ roborock_name }} wurde pausiert"
+              data:
+                clickAction: entityId:{{ roborock }}
+                actions:
+                  - action: "{{ roborock_short_name }}_dock"
+                    title: Dock
+                  - action: "{{ roborock_short_name }}_resume"
+                    title: Weiter
+                  #- action: "{{ roborock_short_name }}_1h"
+                  #  title: 1h weiter
+                channel: Roborock
+                persistent: false
+                importance: high
+                sticky: "false"
+                tag: "{{ roborock_name }}"
+          - wait_for_trigger:
+              - platform: event
+                event_type: mobile_app_notification_action
+          - service: notify.all_devices
+            data:
+              message: clear_notification
+              data:
+                tag: "{{ roborock_name }}"
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ wait.trigger.event.data.action == roborock_short_name + '_dock' }}"
+                sequence:
+                  - service: vacuum.return_to_base
+                    data: {}
+                    target:
+                      entity_id: !input 'roborock'
+              - conditions:
+                  - condition: template
+                    value_template: "{{ wait.trigger.event.data.action == roborock_short_name + '_resume' }}"
+                sequence:
+                  - service: vacuum.start
+                    data: {}
+                    target:
+                      entity_id: !input 'roborock'
+              - conditions:
+                  - condition: template
+                    value_template: "{{ wait.trigger.event.data.action == roborock_short_name + '_resume_1h' }}"
+                sequence:
+                  - service: vacuum.start
+                    data: {}
+                    target:
+                      entity_id: !input 'roborock'
+                  - delay:
+                      hours: 1
+                      minutes: 0
+                      seconds: 0
+                      milliseconds: 0
+mode: restart
