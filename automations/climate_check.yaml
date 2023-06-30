@@ -125,6 +125,21 @@ action:
             default:
               - choose:
                   - conditions:
+                    - condition: state
+                      entity_id: binary_sensor.climate_summer_mode
+                      state: "on"
+                    sequence:
+                      - service: climate.set_temperature
+                        target:
+                          entity_id: !input 'entity'
+                        data:
+                          temperature: 10
+                      - service: input_number.set_value
+                        data:
+                          value: 10
+                        target:
+                          entity_id: !input 'temperature'
+                  - conditions:
                       - condition: template
                         value_template: >-
                           {{ (state_attr(entity, 'temperature') | float(0)) > (states(temperature_eco) | float(0)) or (states(temperature) | float(0)) > (states(temperature_eco) | float(0)) }}
