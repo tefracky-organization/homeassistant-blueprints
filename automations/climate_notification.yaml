@@ -11,7 +11,7 @@ blueprint:
         entity:
           domain: input_number
     temperature:
-      name: Solltemperature
+      name: Solltemperatur
       description: input_number.climate_work
       selector:
         entity:
