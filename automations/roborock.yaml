@@ -37,29 +37,32 @@ trigger:
     for:
       hours: 0
       minutes: 0
-      seconds: 5
+      seconds: 15
     to: cleaning
     id: started
   - platform: state
     entity_id: !input 'roborock'
     from: paused
     to: cleaning
-    id: paused
+    id: resume
   - platform: state
     entity_id: !input 'roborock'
-    from: paused
+    from: idle
     to: cleaning
+    id: resume
+  - platform: state
+    entity_id: !input 'roborock'
+    to: returning
     id: returning
   - platform: state
     entity_id: !input 'roborock'
-    from: idle
-    id: idle
-    to: cleaning
-  - platform: state
-    entity_id: !input 'roborock'
-    from: idle
-    id: idle
     to: returning
+    id: charging
+
+condition:
+  - condition: state
+    entity_id: input_boolean.vacation
+    state: "off"
 
 action:
   - choose:
@@ -67,17 +70,11 @@ action:
           - condition: or
             conditions:
               - condition: trigger
-                id: idle
+                id: resume
               - condition: trigger
-                id: paused
-          - condition: or
-            conditions:
-              - condition: state
-                entity_id: !input 'roborock'
-                state: cleaning
-              - condition: state
-                entity_id: !input 'roborock'
-                state: returning
+                id: returning
+              - condition: trigger
+                id: charging
         sequence:
           - service: notify.all_devices
             data:
@@ -141,17 +138,4 @@ action:
                     data: {}
                     target:
                       entity_id: !input 'roborock'
-              - conditions:
-                  - condition: template
-                    value_template: "{{ wait.trigger.event.data.action == roborock_short_name + '_resume_1h' }}"
-                sequence:
-                  - service: vacuum.start
-                    data: {}
-                    target:
-                      entity_id: !input 'roborock'
-                  - delay:
-                      hours: 1
-                      minutes: 0
-                      seconds: 0
-                      milliseconds: 0
 mode: restart
