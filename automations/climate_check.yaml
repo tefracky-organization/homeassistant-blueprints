@@ -102,11 +102,11 @@ action:
                     entity_id: !input 'door_sensor'
                     state: 'on'
                 sequence:
-                  - service: climate.set_hvac_mode
+                  - service: climate.set_temperature
                     target:
                       entity_id: !input 'entity'
                     data:
-                      hvac_mode: 'off'
+                      temperature: 5
               #- conditions:
               #    - condition: state
               #      entity_id: input_boolean.vacation
