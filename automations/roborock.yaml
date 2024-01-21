@@ -6,22 +6,28 @@ blueprint:
   input:
     roborock:
       name: Roborock
-      description: Staubsauger, der gesteuert werden soll (vacuum.roborock_unten)
+      description: Staubsauger, der gesteuert werden soll (vacuum.roborock_downstairs)
       selector:
         entity:
           domain: vacuum
     water_box_attached:
       name: Wasserbehälter angebracht
-      description: Binary-Sensor, der anzeigt, ob der Wasserbehälter angebracht ist (binary_sensor.roborock_unten_water_box_attached)
+      description: Binary-Sensor, der anzeigt, ob der Wasserbehälter angebracht ist (binary_sensor.roborock_downstairs_water_box_attached)
       selector:
         entity:
           domain: binary_sensor
     mop_attached:
       name: Wischmop angebracht
-      description: Binary-Sensor, der anzeigt, ob der Wischmop angebracht ist (binary_sensor.roborock_unten_mop_attached)
+      description: Binary-Sensor, der anzeigt, ob der Wischmop angebracht ist (binary_sensor.roborock_downstairs_mop_attached)
       selector:
         entity:
           domain: binary_sensor
+    resume_button:
+      name: Staubsauger fortsetzen
+      description: Input-Button, der den Staubsauger fortsetzen soll (input_button.roborock_downstairs_resume)
+      selector:
+        entity:
+          domain: input_button
 
 variables:
   roborock: !input 'roborock'
@@ -116,6 +122,17 @@ action:
           - wait_for_trigger:
               - platform: event
                 event_type: mobile_app_notification_action
+                event_data:
+                  action: "{{ roborock_short_name + '_dock' }}"
+                id: dock
+              - platform: event
+                event_type: mobile_app_notification_action
+                event_data:
+                  action: "{{ roborock_short_name + '_resume' }}"
+                id: resume
+              - platform: state
+                entity_id: !input 'resume_button'
+                id: resume_button
           - service: notify.all_devices
             data:
               message: clear_notification
@@ -124,7 +141,7 @@ action:
           - choose:
               - conditions:
                   - condition: template
-                    value_template: "{{ wait.trigger.event.data.action == roborock_short_name + '_dock' }}"
+                    value_template: "{{ wait.trigger.id == 'dock' }}"
                 sequence:
                   - service: vacuum.return_to_base
                     data: {}
@@ -132,7 +149,15 @@ action:
                       entity_id: !input 'roborock'
               - conditions:
                   - condition: template
-                    value_template: "{{ wait.trigger.event.data.action == roborock_short_name + '_resume' }}"
+                    value_template: "{{ wait.trigger.id == 'resume' }}"
+                sequence:
+                  - service: vacuum.start
+                    data: {}
+                    target:
+                      entity_id: !input 'roborock'
+              - conditions:
+                  - condition: template
+                    value_template: "{{ wait.trigger.id == 'resume_button' }}"
                 sequence:
                   - service: vacuum.start
                     data: {}
