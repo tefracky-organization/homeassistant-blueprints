@@ -4,7 +4,7 @@ blueprint:
   description: ESP-Thermometer neu starten, wenn Temperatur, eCO2 oder TVOC zu niedrig
   domain: automation
   input:
-    button:
+    reboot:
       name: Neustart-Button
       description: button.thermometer_wohnzimmer_neustart
       selector:
@@ -33,20 +33,16 @@ blueprint:
           device_class: volatile_organic_compounds
 trigger:
   - platform: numeric_state
-    entity_id: !input 'temperature'
+    entity_id: !input 'tvoc'
     below: '10'
     for: 00:05:00
   - platform: numeric_state
     entity_id: !input 'eco2'
     below: '410'
     for: 00:05:00
-  - platform: numeric_state
-    entity_id: !input 'temperature'
-    below: '10'
-    for: 00:05:00
 action:
-  - service: switch.turn_on
+  - service: button.press
     target:
-      entity_id: !input 'tvoc'
+      entity_id: !input 'reboot'
 mode: single
 max_exceeded: silent
