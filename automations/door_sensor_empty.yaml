@@ -1,0 +1,50 @@
+blueprint:
+  source_url: "https://raw.githubusercontent.com/tefracky/homeassistant-blueprints/blueprints/automations/door_sensor_empty.yaml"
+  name: Türsensor leer
+  description: Sendet eine Benachrichtigung, wenn ein Türsensor seit über 3 Tagen nicht geschaltet hat
+  domain: automation
+  input:
+    door_sensor:
+      name: Türsensor
+      description: Türsensor, der geprüft werden soll (input_boolean.door_sensor_work)
+      selector:
+        entity:
+          domain: input_boolean
+
+variables:
+  door_sensor: !input 'door_sensor'
+
+trigger:
+  - platform: time_pattern
+    minutes: "27"
+    hours: /1
+
+condition: []
+
+action:
+  - if:
+      - condition: template
+        value_template: >
+          {{ states[door_sensor].last_updated | as_timestamp - (now() + timedelta(days=3)) | as_timestamp < 0  }}
+
+    then:
+      - service: notify.oli_und_tina
+        data:
+          message: clear_notification
+          data:
+            tag: "{{ state_attr(door_sensor, 'friendly_name') }} leer"
+    else:
+      - service: notify.oli_und_tina
+        data:
+          message: >-
+            {{ state_attr(door_sensor, 'friendly_name') }} hat seit 3 Tagen nicht geschaltet
+          title: Türsensor
+          data:
+            clickAction: entityId:input_boolean.door_sensor_work
+            group: Türsensor leer
+            channel: Türsensor leer
+            tag: "{{ state_attr(door_sensor, 'friendly_name') }} leer"
+            persistent: true
+            importance: high
+            sticky: "true"
+mode: restart
