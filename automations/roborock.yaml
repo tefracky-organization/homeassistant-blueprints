@@ -22,12 +22,6 @@ blueprint:
       selector:
         entity:
           domain: binary_sensor
-    resume_button:
-      name: Staubsauger fortsetzen
-      description: Input-Button, der den Staubsauger fortsetzen soll (input_button.roborock_downstairs_resume)
-      selector:
-        entity:
-          domain: input_button
 
 variables:
   roborock: !input 'roborock'
@@ -82,7 +76,7 @@ action:
               - condition: trigger
                 id: charging
         sequence:
-          - service: notify.all_devices
+          - service: notify.oli_und_tina
             data:
               message: clear_notification
               data:
@@ -101,7 +95,7 @@ action:
             data: {}
             target:
               entity_id: !input 'roborock'
-          - service: notify.all_devices
+          - service: notify.oli_und_tina
             data:
               title: Staubsauger pausiert
               message: "{{ roborock_name }} wurde pausiert"
@@ -130,10 +124,7 @@ action:
                 event_data:
                   action: "{{ roborock_short_name + '_resume' }}"
                 id: resume
-              - platform: state
-                entity_id: !input 'resume_button'
-                id: resume_button
-          - service: notify.all_devices
+          - service: notify.oli_und_tina
             data:
               message: clear_notification
               data:
@@ -150,14 +141,6 @@ action:
               - conditions:
                   - condition: template
                     value_template: "{{ wait.trigger.id == 'resume' }}"
-                sequence:
-                  - service: vacuum.start
-                    data: {}
-                    target:
-                      entity_id: !input 'roborock'
-              - conditions:
-                  - condition: template
-                    value_template: "{{ wait.trigger.id == 'resume_button' }}"
                 sequence:
                   - service: vacuum.start
                     data: {}
