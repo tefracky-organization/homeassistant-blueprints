@@ -49,7 +49,7 @@ action:
           minutes: 15
           seconds: 0
       sequence:
-      - service: notify.all_devices
+      - service: notify.oli_und_tina
         data:
           message: "{{ room }} ist schon länger als 15 Minuten offen"
           data:
@@ -79,7 +79,7 @@ action:
           - condition: template
             value_template: "{{ wait.trigger.event.data.action == 'door_sensor_' + room_en + '_close' }}"
           sequence:
-          - service: notify.all_devices
+          - service: notify.oli_und_tina
             data:
               message: clear_notification
               data:
@@ -89,18 +89,18 @@ action:
             target:
               entity_id: !input door_sensor
         default:
-          - service: notify.all_devices
+          - service: notify.oli_und_tina
             data:
               message: clear_notification
               data:
                 tag: Türsensor {{ room }}
-      - service: notify.all_devices
+      - service: notify.oli_und_tina
         data:
           message: clear_notification
           data:
             tag: Türsensor {{ room }}
     default:
-      - service: notify.all_devices
+      - service: notify.oli_und_tina
         data:
           message: clear_notification
           data:
