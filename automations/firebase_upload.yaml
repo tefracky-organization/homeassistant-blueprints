@@ -125,7 +125,7 @@ condition:
         state: unbekannt
 
 action:
-- service: rest_command.update_firebase_homeassistant
+- service: rest_command.update_firebase_thermometer_for_homeassistant
   continue_on_error: true
   data:
     temp: |
@@ -141,7 +141,7 @@ action:
     iaqtext: |
       {{ states(iaqtext) }}
     device: !input 'device'
-- service: rest_command.update_firebase_akt
+- service: rest_command.update_firebase_thermometer_akt
   continue_on_error: true
   data:
     temp: |
@@ -157,7 +157,7 @@ action:
     iaqtext: |
       {{ states(iaqtext) }}
     device: !input 'device'
-- service: rest_command.update_firebase_act
+- service: rest_command.update_firebase_thermometer_act
   continue_on_error: true
   data:
     temp: |
@@ -173,7 +173,7 @@ action:
     iaqtext: |
       {{ states(iaqtext) }}
     device: !input 'device'
-- service: rest_command.update_firebase_history
+- service: rest_command.update_firebase_thermometer_history
   continue_on_error: true
   data:
     temp: |
