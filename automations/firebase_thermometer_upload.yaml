@@ -1,5 +1,5 @@
 blueprint:
-  source_url: "https://raw.githubusercontent.com/tefracky/homeassistant-blueprints/blueprints/automations/firebase_upload.yaml"
+  source_url: "https://raw.githubusercontent.com/tefracky/homeassistant-blueprints/blueprints/automations/firebase_thermometer_upload.yaml"
   name: Firebase upload Thermometer
   description: Werte von ESP-Thermometern auf Firebase hochladen.
   domain: automation
