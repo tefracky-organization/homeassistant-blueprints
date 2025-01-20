@@ -1,0 +1,51 @@
+blueprint:
+  source_url: "https://raw.githubusercontent.com/tefracky/homeassistant-blueprints/blueprints/automations/tasker.yaml"
+  name: Tasker HTTP Request
+  description: Call Tasker when a device changes state
+  domain: automation
+  input:
+    ip_address:
+      name: IP Address
+      description:  The IP Address of the Android device Tasker is running on
+      default: "192.168."
+      selector:
+        text:
+            type: text
+    port:
+      name: Port
+      description:  The port the Tasker device is listening on (usually 1821)
+      default: "1821"
+      selector:
+        text:
+            type: number
+    path:
+      name: Path
+      description:  The path in the HTTP Request event condition that the Tasker device is listening on (usually 'home_assistant')
+      default: "home_assistant"
+      selector:
+        text:
+            type: text
+    target_devices:
+      name: Devices
+      description:  The devices that should trigger the request
+      selector:
+        entity:
+          multiple: true
+
+trigger:
+  - platform: state
+    entity_id: !input target_devices
+
+action:
+    service: rest_command.tasker
+    data:
+      ip_address: !input ip_address
+      port: !input port
+      path: !input path
+      event: |
+        {
+          'device_id':'{{trigger.entity_id}}',
+          'device_name':'{{state_attr(trigger.entity_id,'friendly_name')}}',
+          'from':'{{trigger.from_state.state}}',
+          'to':'{{trigger.to_state.state}}'
+        }
