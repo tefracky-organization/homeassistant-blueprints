@@ -1,0 +1,88 @@
+blueprint:
+  name: Thermostat Benachrichtigung Fehler
+  description: "Benachrichtigt, wenn ein Thermostat in einem bestimmten Raum nicht verfügbar ist"
+  source_url: "https://raw.githubusercontent.com/tefracky/homeassistant-blueprints/blueprints/automations/climate_problem.yaml"
+  domain: automation
+  input:
+    sensor:
+      name: Thermostat Batteriesensor
+      description: "Der Batteriesensor des Thermostats"
+      selector:
+        entity:
+          domain: sensor
+    climate:
+      name: Thermostat Climate
+      description: "Das Climate-Entity des Thermostats"
+      selector:
+        entity:
+          domain: climate
+    room:
+      name: Raumname
+      description: "Der Name des Raums"
+      selector:
+        text:
+
+trigger:
+  - platform: state
+    entity_id: !input sensor
+  - platform: state
+    entity_id: !input sensor
+    for:
+      hours: 1
+      minutes: 0
+      seconds: 0
+
+condition:
+  - condition: template
+    value_template: >-
+      {{ (now() | as_timestamp - states('sensor.uptime') | as_timestamp) > 10*60 }}
+  - condition: state
+    entity_id: binary_sensor.heizung_zuhause_sommermodus
+    state: "off"
+
+variables:
+  sensor_entity: !input sensor
+  climate_entity: !input climate
+  room_name: !input room
+
+action:
+  - choose:
+      - conditions:
+          - condition: or
+            conditions:
+              - condition: state
+                entity_id: !input sensor
+                state: unavailable
+              - condition: template
+                value_template: >-
+                  {{ states[sensor_entity ~ '_linkquality'] is not none and
+                     states[sensor_entity ~ '_linkquality'].last_changed <
+                     (now() - timedelta(hours=1)) }}
+        sequence:
+          - service: notify.oli_und_tina
+            data:
+              message: "Heizung {{ room_name }} nicht verfügbar"
+              title: "Heizung nicht verfügbar"
+              data:
+                clickAction: "entityId:{{ climate_entity }}"
+                tag: "Heizung {{ room_name }}"
+                persistent: true
+                importance: default
+                sticky: "false"
+                group: Heizung
+                channel: Heizung
+          - service: persistent_notification.create
+            data:
+              message: "Heizung {{ room_name }} nicht verfügbar"
+              title: "Heizung nicht verfügbar"
+              notification_id: "Heizung {{ room_name }}"
+    default:
+      - service: notify.oli_und_tina
+        data:
+          message: clear_notification
+          data:
+            tag: "Heizung {{ room_name }}"
+      - service: persistent_notification.dismiss
+        data:
+          notification_id: "Heizung {{ room_name }}"
+mode: restart
