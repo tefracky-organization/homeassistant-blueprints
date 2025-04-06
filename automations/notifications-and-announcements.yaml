@@ -4,7 +4,7 @@ blueprint:
   description: >
     # 📢 Benachrichtigungen & Durchsagen
     
-    **Version: 1.5**
+    **Version: 1.0**
     
     
     Lege deinen Auslöser fest und verbreite die Nachricht 💬🔉
@@ -13,31 +13,30 @@ blueprint:
     **Wenn dir meine Blueprints gefallen und du deine Unterstützung zeigen oder einfach Danke sagen möchtest,** [Hier klicken](https://www.paypal.com/donate/?hosted_button_id=WAZS3QSDTPGA8) 🙂
     
     <details>
-    <summary><b>Der Automatisierungsprozess:</b> - Hier klicken, um mehr anzuzeigen</summary>
-    
+    <summary><b>Der Automatisierungsprozess:</b> - Hier klicken, um weitere Details anzuzeigen</summary>
     
       - **Trigger Optionen:**
     
-        - Gib den Zustandswechsel einer oder mehrerer Entitäten ein, der die Automatisierung auslösen soll, und wähle diesen aus einer Dropdown-Liste aus. Falls der gewünschte Zustand nicht in der Dropdown-Liste verfügbar ist, kannst du auch einen eigenen benutzerdefinierten Zustand angeben.
-        - Optionen für Zustandsänderungen: Die verfügbaren Zustandsänderungen umfassen:
+        - Gib den Zustandswechsel einer oder mehrerer Entitäten an, der die Automatisierung auslösen soll, und wähle diesen aus einer Dropdown-Liste aus. Falls der gewünschte Zustand nicht in der Liste verfügbar ist, kannst du auch einen eigenen benutzerdefinierten Zustand eingeben.
+        - Optionen für Zustandsänderungen:
             - **Allgemeine Zustände:** Button oder beliebiger Zustand, AN, AUS, Nicht verfügbar oder Unbekannt
             - **Standortbezogene Zustände:** Zuhause oder Nicht zu Hause
-            - **Numerische Zustände:** Numerischer Zustand - Über, Numerischer Zustand - Unter oder Numerischer Zustand - Über & Unter
+            - **Numerische Zustände:** Numerischer Zustand – Über, Numerischer Zustand – Unter oder Numerischer Zustand – Über & Unter
     
       - **Benachrichtigungsoptionen:**
     
-        - Entscheide, ob Nachrichten an ein oder mehrere Geräte gesendet werden sollen. Kompatibel mit Apple iOS und Android-Geräten.
-        - Wähle, ob deine Benachrichtigungen direkt in der Home Assistant-Benutzeroberfläche (UI) angezeigt werden sollen.
-        - Entscheide dich dazu, eine Text-to-Speech-Durchsage an die ausgewählten Medienplayer zu senden.
-        - Wähle, ob eine benutzerdefinierte Aktion ausgeführt werden soll.
+        - Wähle, ob Nachrichten an ein oder mehrere Geräte gesendet werden sollen (kompatibel mit Apple iOS und Android).
+        - Bestimme, ob deine Benachrichtigungen direkt in der Home Assistant‑Benutzeroberfläche angezeigt werden sollen.
+        - Entscheide, ob eine Text-to-Speech-Durchsage an die ausgewählten Medienplayer erfolgen soll.
+        - Lege fest, ob eine benutzerdefinierte Aktion ausgeführt werden soll.
     
       - **Zeitbasierte Automatisierung:**
     
-        - Lege genaue Start- und Endzeiten sowie die Wochentage fest, an denen die Automatisierung ausgeführt werden darf.
+        - Lege exakte Start- und Endzeiten sowie die Wochentage fest, an denen die Automatisierung aktiv sein soll.
     
       - **Benutzerdefinierte Bedingungen:**
     
-        - Gib beliebige benutzerdefinierte Bedingungen ein, um den Automatisierungsprozess weiter zu individualisieren.
+        - Füge beliebige zusätzliche Bedingungen hinzu, um den Automatisierungsprozess individuell anzupassen.
     
     </details>
     
@@ -45,22 +44,19 @@ blueprint:
     Brauchst du Hilfe? Sieh dir unsere FAQ an: [Hier klicken](https://community.home-assistant.io/t/notifications-announcements/728100/2?u=blacky)
     
     Lass uns wissen, was du von diesem Blueprint hältst und unterstütze die Community inklusive Updates: [Hier klicken](https://community.home-assistant.io/t/notifications-announcements/728100?u=blacky)
-    
-    
-    Erforderlich = *
   domain: automation
   input:
     trigger_settings:
-      name: "Trigger *"
+      name: "Trigger"
       icon: mdi:cog-outline
       collapsed: true
       input:
         trigger_state:
-          name: Trigger - Zustand *
+          name: Trigger - Zustand
           description: >
             Bitte wähle den Zustand, der den Trigger auslösen soll.
             Du kannst aus den zehn verfügbaren Optionen im Dropdown-Menü wählen.
-            Falls deine Option nicht im Dropdown-Menü vorhanden ist, gib einfach den gewünschten Zustand ein und klicke auf die Speichern-Schaltfläche.
+            Falls deine Option nicht vorhanden ist, gib einfach deinen gewünschten Zustand ein und klicke auf Speichern.
             
             1 - Button Oder Beliebiger Zustand
             
@@ -76,15 +72,13 @@ blueprint:
             
             7 - Nicht zu Hause
             
-            8 - Numerischer Zustand - Über
+            8 - Numerischer Zustand – Über
             
-            9 - Numerischer Zustand - Unter
+            9 - Numerischer Zustand – Unter
             
-            10 - Numerischer Zustand - Über & Unter
+            10 - Numerischer Zustand – Über & Unter
             
-            Ein Nummerierungssystem wurde implementiert, um die Navigation innerhalb der Dropdown-Auswahl zu erleichtern.
-            Jede Nummer entspricht einer spezifischen Konfiguration, die dem Nutzer hilft, die verwendeten Einstellungen zu identifizieren und anzupassen.
-            Beispielsweise erfordert die Auswahl "8 - Numerischer Zustand - Über" die Einstellungen, die mit "Verwendet in den Optionen 8, 9 oder 10" markiert sind, da Nummer 8 in diesen Optionen enthalten ist.
+            Das Nummerierungssystem erleichtert die Navigation und hilft dir, die Einstellungen zu identifizieren.
           default: button_any_state
           selector:
             select:
@@ -105,17 +99,17 @@ blueprint:
                   value: "home"
                 - label: "7 - Nicht zu Hause"
                   value: "not_home"
-                - label: "8 - Numerischer Zustand - Über"
+                - label: "8 - Numerischer Zustand – Über"
                   value: "numeric_state_above"
-                - label: "9 - Numerischer Zustand - Unter"
+                - label: "9 - Numerischer Zustand – Unter"
                   value: "numeric_state_below"
-                - label: "10 - Numerischer Zustand - Über & Unter"
+                - label: "10 - Numerischer Zustand – Über & Unter"
                   value: "numeric_state_above_below"
         trigger_state_entity:
           name: Zustands-Entitäten
           description: >
             **Verwendet in den Optionen 1, 2, 3, 4, 5, 6 oder 7.**
-            Gib die Entitäten an, die den Zustandwechsel auslösen.
+            Gib die Entitäten an, die den Zustandswechsel auslösen.
           default: []
           selector:
             entity:
@@ -130,7 +124,7 @@ blueprint:
             entity:
               multiple: true
         above_state:
-          name: Numerischer Zustand - Über Option
+          name: Numerischer Zustand – Über Option
           description: >
             **Verwendet in den Optionen 8 oder 10.**
             Setze den Schwellenwert, bei dessen Überschreitung der numerische Zustand den festgelegten Wert überschreitet.
@@ -142,7 +136,7 @@ blueprint:
               step: 1
               unit_of_measurement: Wert
         below_state:
-          name: Numerischer Zustand - Unter Option
+          name: Numerischer Zustand – Unter Option
           description: >
             **Verwendet in den Optionen 9 oder 10.**
             Setze den Schwellenwert, bei dessen Unterschreitung der numerische Zustand den festgelegten Wert unterschreitet.
@@ -182,23 +176,31 @@ blueprint:
                 - label: Mobile App Benachrichtigungsoption deaktivieren
                   value: "disable_mobile_app_notify"
         notify_device:
-          name: Geräte oder Gruppe zur Benachrichtigung
+          name: Geräte zur Benachrichtigung
           description: >
-            Wähle den Benachrichtigungsdienst (z. B. notify.all_devices oder eine andere Gruppe) aus, an den die Nachricht gesendet werden soll.
-          default: "notify.all_devices"
+            Wähle die Geräte aus, die benachrichtigt werden sollen, wenn die Automatisierung ausgelöst wird.
+          default:
+            - 7b4588bc469f471e30087c5757f2ebf4
+            - 30d663ef8b06c87a5bdb80a56af74b15
+            - e0f19df8be795d8d5867ccf822025697
+            - 0cfbf22f9dc76ecf11f78017669b1d51
+            - 170f72bbcf6e90b79e776d8511fc2419
           selector:
-            service:
+            device:
+              filter:
+                - integration: mobile_app
+              multiple: true
         notify_title:
           name: Benachrichtigungstitel
           description: >
-            Gib den Titel der Benachrichtigung ein, der sowohl für die Android-Benachrichtigung als auch für die feste (persistente) Benachrichtigung in der UI verwendet wird.
+            Gib den Titel der Benachrichtigung ein, der sowohl für die Android-Benachrichtigung als auch für die persistente Benachrichtigung in der UI verwendet wird.
           default: "📢 Gebe hier den Benachrichtigungstitel ein"
           selector: 
             text:
         notify_message:
           name: Benachrichtigungsnachricht
           description: >
-            Gib die Nachricht der Benachrichtigung ein, die sowohl für die Android-Benachrichtigung als auch für die feste Benachrichtigung in der UI verwendet wird.
+            Gib die Nachricht der Benachrichtigung ein, die sowohl für die Android-Benachrichtigung als auch für die persistente Benachrichtigung in der UI verwendet wird.
           default: "Gebe hier die Benachrichtigungsnachricht ein 🙂"
           selector:
             text:
@@ -234,7 +236,7 @@ blueprint:
             **Optionen für Android (Optional):**
             - **High Priority**: Benachrichtigungen werden sofort zugestellt, um sicherzustellen, dass wichtige Meldungen umgehend empfangen werden.
             - **Sticky Notification**: Wichtige Meldungen bleiben in der Benachrichtigungsleiste, bis sie aktiv entfernt werden.
-            - **Notification Channel**: Ermöglicht es, verschiedene Benachrichtigungseinstellungen (einschließlich Töne, Vibrationen und andere gerätespezifische Funktionen) zu organisieren. Diese Option wird immer genutzt und erfordert die Eingabe eines Channel-Namens.
+            - **Notification Channel**: Organisiert verschiedene Benachrichtigungseinstellungen (Töne, Vibrationen etc.). Diese Option wird immer genutzt und erfordert die Eingabe eines Channel-Namens.
           default: []
           selector:
             select:
@@ -244,15 +246,13 @@ blueprint:
                   value: "high_priority"
                 - label: Sticky Notification
                   value: "sticky"
-                - label: Notification Channel
-                  value: "channel"
         notify_channel:
-          name: Notification Channel - Android & Persistent
+          name: Notification Channel – Android & Persistent
           description: >
             Gib den Namen des Notification Channels ein. Dieser Channel wird auch als Tag für die persistente Benachrichtigung verwendet.
             Diese Eingabe ist stets erforderlich. Falls du noch keinen Channel hast, wird dieser beim ersten Senden der Benachrichtigung erstellt und kann anschließend konfiguriert werden.
             Empfohlenes Icon: mdi:radio
-          default: "default_channel"
+          default: "default-channel"
           selector:
             text:
         # Use The Notify Zone Option auskommentiert:
@@ -417,6 +417,121 @@ blueprint:
     #               value: "sat"
     #             - label: Sonntag
     #               value: "sun"
+    action_settings:
+      name: "Actions Buttons"
+      icon: mdi:gesture-tap
+      collapsed: true
+      input:
+        include_action_buttons:
+          name: Notify - Action Buttons Options (Optional)
+          description: >
+            Enable the action buttons you would like to use. These buttons will be shown in the notification, allowing you to perform actions when clicked.
+
+
+            **NOTE** - You do not need to select any notification action buttons to execute a action.
+            If you prefer to run a action without using any action buttons, simply enable any **Auto Action** located in the **Actions** section below.
+
+
+            ⚠️ Enter the names for all enabled **Action Buttons** below, including the **Cancel Action Button**.
+            Missing any button names may prevent the automation from functioning correctly and could result in not receiving the notification.
+          default: []
+          selector:
+            select:
+              options:
+                - label: Enable action button 1
+                  value: "enable_action_button_1"
+                - label: Enable action button 2
+                  value: "enable_action_button_2"
+                - label: Enable action button 3
+                  value: "enable_action_button_3"
+              multiple: true
+        action_button_1:
+          name: Action Button 1
+          description: >
+            Enter the button name to be displayed in the notification.
+            This button will execute all actions entered into the **Action 1** input located in the **Actions** section below.
+          default: []
+          selector:
+            text:
+        action_button_2:
+          name: Action Button 2
+          description: >
+            Enter the button name to be displayed in the notification.
+            This button will execute all actions entered into the **Action 2** input located in the **Actions** section below.
+          default: []
+          selector:
+            text:
+        action_button_3:
+          name: Action Button 3
+          description: >
+            Enter the button name to be displayed in the notification.
+            This button will execute all actions entered into the **Action 3** input located in the **Actions** section below.
+          default: []
+          selector:
+            text:
+        action_button_stop:
+          name: Cancel Action Button
+          description: >
+            Enter the Cancel button name to be displayed in the notification.
+            This button will cancel all actions and stop the automation.
+            It will be automatically included in the notification if you have enabled an action button above.
+          default: Cancel
+          selector:
+            text:
+    auto_action_settings:
+      name: "Actions"
+      icon: mdi:code-tags
+      collapsed: true
+      input:
+        include_auto_actions:
+          name: Use The Auto Action Options (Optional)
+          description: >
+            Enabling the auto option will trigger the **Actions** below when the entity changes to its specified state.
+
+
+            When using action buttons in a notification, enabling an auto action is not necessary for the actions to work, as pressing an action button will execute the selected action.
+            However, if you miss the notification and don't press an action button, enabling the auto action option ensures the start actions will still run after the specified time delay.
+          default: []
+          selector:
+            select:
+              options:
+                - label: Enable auto action 1
+                  value: "enable_action_1"
+                - label: Enable auto action 2
+                  value: "enable_action_2"
+                - label: Enable auto action 3
+                  value: "enable_action_3"
+              multiple: true
+        action_1:
+          name: Action 1
+          description: >
+            Enter the actions you want to run when the entity changes state.
+
+
+            These actions are also linked to the **Notify - Action Button 1** input located in the **Actions Buttons** section above.
+          default: []
+          selector:
+            action:
+        action_2:
+          name: Action 2
+          description: >
+            Enter the actions you want to run when the entity changes state.
+
+
+            These actions are also linked to the **Notify - Action Button 2** input located in the **Actions Buttons** section above.
+          default: []
+          selector:
+            action:
+        action_3:
+          name: Action 3
+          description: >
+            Enter the actions you want to run when the entity changes state.
+
+          
+            These actions are also linked to the **Notify - Action Button 3** input located in the **Actions Buttons** section above.
+          default: []
+          selector:
+            action:
     custom_actions_settings:
       name: "Benutzerdefinierte Aktionen"
       icon: mdi:code-tags
@@ -426,7 +541,7 @@ blueprint:
           name: Benutzerdefinierte Aktionsoption (Optional)
           description: >
             Passe deine Automatisierung mit beliebigen Aktionen an.
-            Zum Beispiel kannst du Durchsagen auf speziellen Lautsprechern ausführen.
+            Zum Beispiel kannst du Durchsagen über spezielle Lautsprecher ausführen.
           default: disable_custom_actions
           selector:
             select:
@@ -438,7 +553,7 @@ blueprint:
         custom_actions:
           name: Benutzerdefinierte Aktionen
           description: >
-            Gib die benutzerdefinierten Aktionen an, die ausgeführt werden sollen.
+            Gib die benutzerdefinierten Aktionen ein, die ausgeführt werden sollen.
           default: []
           selector:
             action:
@@ -450,7 +565,7 @@ blueprint:
         global_conditions:
           name: Globale Bedingungen
           description: >
-            Gib globale Bedingungen an, die erfüllt sein müssen, damit die Automatisierung ausgeführt wird.
+            Gib globale Bedingungen ein, die erfüllt sein müssen, damit die Automatisierung ausgeführt wird.
           default: []
           selector:
             condition:
@@ -477,6 +592,15 @@ variables:
   # include_notify_zone: !input include_notify_zone
   # notify_zone: !input notify_zone
   # Permanente Benachrichtigung: Titel und Nachricht werden von notify_title und notify_message übernommen.
+  include_action_buttons: !input include_action_buttons
+  action_button_1: !input action_button_1
+  action_button_2: !input action_button_2
+  action_button_3: !input action_button_3
+  action_button_stop: !input action_button_stop
+  include_auto_actions: !input include_auto_actions
+  action_1: !input action_1
+  action_2: !input action_2
+  action_3: !input action_3
   include_custom_actions: !input include_custom_actions
   custom_actions: !input custom_actions
   # Zeitbezogene Variablen auskommentiert:
@@ -489,6 +613,7 @@ variables:
   device_message_data: >-
     {% set message = namespace(data={}) %}
     {% set push = namespace(data={}) %}
+    {% set actions = [] %}
     {# iOS-spezifische Optionen auskommentiert #}
     {# if notify_interruption_level in ['active', 'critical', 'time-sensitive', 'passive'] %}
       {# set push.data = dict(push.data, **{ 'interruption-level': notify_interruption_level }) #}
@@ -502,19 +627,38 @@ variables:
     {% if 'high_priority' in notify_data %}
       {% set message.data = dict(message.data, **{ 'ttl': 0, 'priority': 'high' }) %}
     {% endif %}
-    {% if 'channel' in notify_data %}
-      {% set message.data = dict(message.data, **{ 'channel': notify_channel }) %}
+    {% set message.data = dict(message.data, **{ 'channel': notify_channel }) %}
+    {% set message.data = dict(message.data, **{ 'tag': notify_channel }) %}
+    {% if 'enable_action_button_1' in include_action_buttons %}
+      {% set actions = actions + [{ 'action': 'action_button_1', 'title': action_button_1 }] %}
+    {% endif %}
+    {% if 'enable_action_button_2' in include_action_buttons %}
+      {% set actions = actions + [{ 'action': 'action_button_2', 'title': action_button_2 }] %}
+    {% endif %}
+    {% if 'enable_action_button_3' in include_action_buttons %}
+      {% set actions = actions + [{ 'action': 'action_button_3', 'title': action_button_3 }] %}
     {% endif %}
     {% if 'sticky' in notify_data %}
-      {% set message.data = dict(message.data, **{
-          'sticky': "true",
-          'actions': [
-              {'action': notify_channel ~ '_dismiss', 'title': 'Löschen'}
-          ]
-      }) %}
+      {% set message.data = dict(message.data, **{ 'sticky': "true" }) %}
+      {% set actions = actions + [{'action': 'dismiss', 'title': 'Löschen'}] %}
     {% endif %}
-
+    {% if actions | length > 0 %}
+      {% set message.data = dict(message.data, **{ 'actions': actions }) %}
+    {% endif %}
     {{ message.data }}
+
+  # filtered_devices: >
+  #   {% if include_notify_zone == 'zone_enabled' %}
+  #     {% set zone_name = notify_zone.split('.')[1] %}
+  #     {% set device_trackers = notify_device | map('device_entities') | list %}
+  #     {% set devices_in_zone = expand(device_trackers)
+  #       | selectattr('state', 'eq', zone_name)
+  #       | map(attribute='entity_id')
+  #       | list %}
+  #     {{ devices_in_zone }}
+  #   {% else %}
+  #     {{ notify_device }}
+  #   {% endif %}
 
   filtered_devices: "{{ notify_device }}"
 
@@ -541,7 +685,26 @@ triggers:
   - platform: event
     event_type: mobile_app_notification_action
     event_data:
-      action: "{{ notify_channel}}_dismiss"
+      action: "action_button_1"
+      tag: !input notify_channel
+    id: action_button_1
+  - platform: event
+    event_type: mobile_app_notification_action
+    event_data:
+      action: "action_button_2"
+      tag: !input notify_channel
+    id: action_button_2
+  - platform: event
+    event_type: mobile_app_notification_action
+    event_data:
+      action: "action_button_3"
+      tag: !input notify_channel
+    id: action_button_3
+  - platform: event
+    event_type: mobile_app_notification_action
+    event_data:
+      action: "dismiss"
+      tag: !input notify_channel
     id: clear_notification_trigger
 
 condition:
@@ -568,6 +731,12 @@ condition:
             id: 't3'
           - "{{ (trigger_state == 'numeric_state_below') or (trigger_state == 'numeric_state_above_below') }}"
       - condition: trigger
+        id: action_button_1
+      - condition: trigger
+        id: action_button_2
+      - condition: trigger
+        id: action_button_3
+      - condition: trigger
         id: clear_notification_trigger
   # Zeitbezogene Bedingungen auskommentiert:
   # - condition: or
@@ -584,24 +753,41 @@ condition:
     conditions: !input global_conditions
 
 action:
-  - if:
-      - condition: trigger
-        id: clear_notification_trigger
-    then:
-      - repeat:
-          for_each: "{{ filtered_devices }}"
-          sequence:
-            - service: "{{ repeat.item }}"
-              data:
-                message: "clear_notification"
+  - choose:
+    - alias: "Check if action button 1 is pressed"
+      conditions:
+        - condition: trigger
+          id: action_button_1
+      sequence: !input action_1
+    - alias: "Check if action button 2 is pressed"
+      conditions:
+        - condition: trigger
+          id: action_button_2
+      sequence: !input action_2
+    - alias: "Check if action button 3 is pressed"
+      conditions:
+        - condition: trigger
+          id: action_button_3
+      sequence: !input action_3
+    - alias: "Check if delete button is pressed"
+      conditions:
+        - condition: trigger
+          id: clear_notification_trigger
+      sequence:
+        - repeat:
+            for_each: "{{ filtered_devices }}"
+            sequence:
+              - action: "notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify }}"
                 data:
-                  tag: !input notify_channel
-    else:
-      - alias: "Sende Android-Benachrichtigung"
+                  message: "clear_notification"
+                  data:
+                    tag: !input notify_channel
+    default:
+      - alias: "Sende eine Benachrichtigung an jedes Gerät"
         repeat:
           for_each: "{{ filtered_devices }}"
           sequence:
-            - service: "{{ repeat.item }}"
+            - action: "notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify }}"
               data:
                 title: !input notify_title
                 message: !input notify_message
@@ -624,9 +810,8 @@ action:
       #         data:
       #           media_player_entity_id: !input media_player
       #           message: !input notify_tts_message
-      - choose:
-        - alias: "Führe benutzerdefinierte Aktion aus"
-          conditions:
-            - condition: template
-              value_template: "{{ 'enable_custom_actions' in include_custom_actions }}"
-          sequence: !input custom_actions
+      - if:
+          - condition: template
+            alias: "Führe benutzerdefinierte Aktion aus"
+            value_template: "{{ 'enable_custom_actions' in include_custom_actions }}"
+        then: !input custom_actions
