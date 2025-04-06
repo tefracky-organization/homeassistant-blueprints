@@ -1,167 +1,163 @@
 blueprint:
   source_url: "https://raw.githubusercontent.com/tefracky/homeassistant-blueprints/blueprints/automations/notifications-and-announcements.yaml"
-  name: Notifications & Announcements
+  name: Benachrichtigungen & Durchsagen (Android + Persistent)
   description: >
-    # 📢 Notifications & Announcements
+    # 📢 Benachrichtigungen & Durchsagen
     
-    **Version: 1.4**
-
-
-    State your trigger and spread the word 💬🔉
+    **Version: 1.5**
     
     
-    **If you like my blueprints, and would like to show your support or just say thank you?** [Click Here](https://www.paypal.com/donate/?hosted_button_id=WAZS3QSDTPGA8) 🙂
-
+    Lege deinen Auslöser fest und verbreite die Nachricht 💬🔉
+    
+    
+    **Wenn dir meine Blueprints gefallen und du deine Unterstützung zeigen oder einfach Danke sagen möchtest,** [Hier klicken](https://www.paypal.com/donate/?hosted_button_id=WAZS3QSDTPGA8) 🙂
+    
     <details>
-    <summary><b>The Automation Process:</b> - Click here to expand</summary>
-
-
-      - **Trigger Options:**
-
-        - Specify the state change of one or more entities that will initiate the automation from a dropdown list. You can also specify your own custom state if it is not available from the dropdown list.
-        - State Change Options: The available state changes include:
-            - **General States:** Button or any state, ON, OFF, Unavailable or Unknown
-            - **Location-Based States:** Home or Not Home
-            - **Numeric States:** Numeric state above, Numeric state below or Numeric state above & below
-
-      - **Notification Options:**
-
-        - Opt to send messages to one or multiple devices. Compatible with Apple iOS and Android devices.
-        - Opt to display your notifications directly within the Home Assistant user interface (UI).
-        - Opt to send Text-to-Speech Announcement to your selected media players.
-        - Opt to use a custom action.
-
-      - **Time-Based Automation:**
-
-        - Specify precise start and end times along with weekday selections to define when the automation can run.
-
-      - **Custom Conditions:**
-
-        - Enter any custom conditions to further customize the automation process.
-
+    <summary><b>Der Automatisierungsprozess:</b> - Hier klicken, um mehr anzuzeigen</summary>
+    
+    
+      - **Trigger Optionen:**
+    
+        - Gib den Zustandswechsel einer oder mehrerer Entitäten ein, der die Automatisierung auslösen soll, und wähle diesen aus einer Dropdown-Liste aus. Falls der gewünschte Zustand nicht in der Dropdown-Liste verfügbar ist, kannst du auch einen eigenen benutzerdefinierten Zustand angeben.
+        - Optionen für Zustandsänderungen: Die verfügbaren Zustandsänderungen umfassen:
+            - **Allgemeine Zustände:** Button oder beliebiger Zustand, AN, AUS, Nicht verfügbar oder Unbekannt
+            - **Standortbezogene Zustände:** Zuhause oder Nicht zu Hause
+            - **Numerische Zustände:** Numerischer Zustand - Über, Numerischer Zustand - Unter oder Numerischer Zustand - Über & Unter
+    
+      - **Benachrichtigungsoptionen:**
+    
+        - Entscheide, ob Nachrichten an ein oder mehrere Geräte gesendet werden sollen. Kompatibel mit Apple iOS und Android-Geräten.
+        - Wähle, ob deine Benachrichtigungen direkt in der Home Assistant-Benutzeroberfläche (UI) angezeigt werden sollen.
+        - Entscheide dich dazu, eine Text-to-Speech-Durchsage an die ausgewählten Medienplayer zu senden.
+        - Wähle, ob eine benutzerdefinierte Aktion ausgeführt werden soll.
+    
+      - **Zeitbasierte Automatisierung:**
+    
+        - Lege genaue Start- und Endzeiten sowie die Wochentage fest, an denen die Automatisierung ausgeführt werden darf.
+    
+      - **Benutzerdefinierte Bedingungen:**
+    
+        - Gib beliebige benutzerdefinierte Bedingungen ein, um den Automatisierungsprozess weiter zu individualisieren.
+    
     </details>
-
-
-    Need help? See our FAQ: [Click Here](https://community.home-assistant.io/t/notifications-announcements/728100/2?u=blacky)
-  
-    Let us know what you think of this blueprint and for community support including updates: [Click Here](https://community.home-assistant.io/t/notifications-announcements/728100?u=blacky)
-
-
-    Required = *
+    
+    
+    Brauchst du Hilfe? Sieh dir unsere FAQ an: [Hier klicken](https://community.home-assistant.io/t/notifications-announcements/728100/2?u=blacky)
+    
+    Lass uns wissen, was du von diesem Blueprint hältst und unterstütze die Community inklusive Updates: [Hier klicken](https://community.home-assistant.io/t/notifications-announcements/728100?u=blacky)
+    
+    
+    Erforderlich = *
   domain: automation
   input:
     trigger_settings:
-      name: "Triggers *"
+      name: "Trigger *"
       icon: mdi:cog-outline
       collapsed: true
       input:
         trigger_state:
-          name: Trigger - State *
+          name: Trigger - Zustand *
           description: >
-            Please select what state you would like for your trigger.
-            You can choose from ten options available in the dropdown menu.
-            If your option is not in the dropdown menu then just type the state you would like to use in and click the save button.
+            Bitte wähle den Zustand, der den Trigger auslösen soll.
+            Du kannst aus den zehn verfügbaren Optionen im Dropdown-Menü wählen.
+            Falls deine Option nicht im Dropdown-Menü vorhanden ist, gib einfach den gewünschten Zustand ein und klicke auf die Speichern-Schaltfläche.
             
+            1 - Button Oder Beliebiger Zustand
             
-            1 - Button Or Any State
+            2 - AN
             
-            2 - ON
+            3 - AUS
             
-            3 - OFF
-
-            4 - Unavailable
-
-            5 - Unknown
-
-            6 - Home
-
-            7 - Not Home
-
-            8 - Numeric State - Above
-
-            9 - Numeric State - Below
-
-            10 - Numeric State - Above & Below
+            4 - Nicht verfügbar
             
+            5 - Unbekannt
             
-            A numbering system has been implemented to facilitate navigation within the dropdown selections. Each number corresponds to a specific configuration,
-            aiding users in identifying and adjusting the settings used within each selection. For instance, when selecting "8 - Numeric State - Above"
-            as a dropdown option, settings marked "Used in options 8, 9 or 10" are required for that respective selection because number 8 is included in those options.
+            6 - Zuhause
+            
+            7 - Nicht zu Hause
+            
+            8 - Numerischer Zustand - Über
+            
+            9 - Numerischer Zustand - Unter
+            
+            10 - Numerischer Zustand - Über & Unter
+            
+            Ein Nummerierungssystem wurde implementiert, um die Navigation innerhalb der Dropdown-Auswahl zu erleichtern.
+            Jede Nummer entspricht einer spezifischen Konfiguration, die dem Nutzer hilft, die verwendeten Einstellungen zu identifizieren und anzupassen.
+            Beispielsweise erfordert die Auswahl "8 - Numerischer Zustand - Über" die Einstellungen, die mit "Verwendet in den Optionen 8, 9 oder 10" markiert sind, da Nummer 8 in diesen Optionen enthalten ist.
           default: button_any_state
           selector:
             select:
               custom_value: true
               mode: dropdown
               options:
-                - label: 1 - Button Or Any State
+                - label: "1 - Button Oder Beliebiger Zustand"
                   value: "button_any_state"
-                - label: 2 - ON
+                - label: "2 - AN"
                   value: "on"
-                - label: 3 - OFF
+                - label: "3 - AUS"
                   value: "off"
-                - label: 4 - Unavailable
+                - label: "4 - Nicht verfügbar"
                   value: "unavailable"
-                - label: 5 - Unknown
+                - label: "5 - Unbekannt"
                   value: "unknown"
-                - label: 6 - Home
+                - label: "6 - Zuhause"
                   value: "home"
-                - label: 7 - Not Home
+                - label: "7 - Nicht zu Hause"
                   value: "not_home"
-                - label: 8 - Numeric State - Above
+                - label: "8 - Numerischer Zustand - Über"
                   value: "numeric_state_above"
-                - label: 9 - Numeric State - Below
+                - label: "9 - Numerischer Zustand - Unter"
                   value: "numeric_state_below"
-                - label: 10 - Numeric State - Above & Below
+                - label: "10 - Numerischer Zustand - Über & Unter"
                   value: "numeric_state_above_below"
         trigger_state_entity:
-          name: State Entities
+          name: Zustands-Entitäten
           description: >
-            **Used in options 1, 2, 3, 4, 5, 6 or 7**.
-            Enter the entities that will trigger the automation on state change.
+            **Verwendet in den Optionen 1, 2, 3, 4, 5, 6 oder 7.**
+            Gib die Entitäten an, die den Zustandwechsel auslösen.
           default: []
           selector:
             entity:
               multiple: true
         trigger_numeric_entity:
-          name: Numeric State Entities
+          name: Numerische Zustands-Entitäten
           description: >
-            **Used in options 8, 9 or 10**.
-            Enter the entities that will trigger the automation numeric state change.
+            **Verwendet in den Optionen 8, 9 oder 10.**
+            Gib die Entitäten an, die den numerischen Zustandswechsel überwachen.
           default: []
           selector:
             entity:
               multiple: true
         above_state:
-          name: Numeric State Above Option
+          name: Numerischer Zustand - Über Option
           description: >
-            **Used in options 8, or 10**.
-            Set the above value. The numeric state trigger will be when the value crosses over to above the set value.
+            **Verwendet in den Optionen 8 oder 10.**
+            Setze den Schwellenwert, bei dessen Überschreitung der numerische Zustand den festgelegten Wert überschreitet.
           default: 0
           selector:
             number:
               min: -20
               max: 100
               step: 1
-              unit_of_measurement: value
+              unit_of_measurement: Wert
         below_state:
-          name: Numeric State Below Option
+          name: Numerischer Zustand - Unter Option
           description: >
-            **Used in options 9 or 10**.
-            Set the below value.
-            The numeric state trigger will be when the value crosses over to below the set value.
+            **Verwendet in den Optionen 9 oder 10.**
+            Setze den Schwellenwert, bei dessen Unterschreitung der numerische Zustand den festgelegten Wert unterschreitet.
           default: 0
           selector:
             number:
               min: -20
               max: 100
               step: 1
-              unit_of_measurement: value
+              unit_of_measurement: Wert
         time_delay_state:
-          name: Time Delay
+          name: Zeitverzögerung
           description: >
-            **Used in options 1, 2, 3, 4, 5, 6, 7, 8, 9 or 10**
-            Specifies the duration that the trigger must maintain its state before the automation is executed.
-            The automation will only proceed if the trigger condition is met continuously for this entire time delay.
+            **Verwendet in allen Optionen.**
+            Bestimme die Dauer, die der Triggerzustand kontinuierlich bestehen muss, bevor die Automatisierung ausgeführt wird.
           default:
             hours: 0
             minutes: 0
@@ -169,320 +165,295 @@ blueprint:
           selector:
             duration:
     device_notify_settings:
-      name: "Mobile App Notify"
+      name: "Benachrichtigungen (Mobil und Persistent)"
       icon: mdi:devices
       collapsed: true
       input:
         include_notify:
-          name: Use The Mobile App Notify Option (Optional)
+          name: Mobile App Benachrichtigungsoption
           description: >
-            Enabling this option will send notifications to the selected devices below. 
-          default: disable_mobile_app_notify
+            Diese Option ist immer aktiviert, um Benachrichtigungen an die ausgewählten Geräte zu senden.
+          default: enable_mobile_app_notify
           selector:
             select:
               options:
-                - label: Enable Mobile App Notify Options
+                - label: Mobile App Benachrichtigungsoption aktivieren
                   value: "enable_mobile_app_notify"
-                - label: Disable Mobile App Notify Options
+                - label: Mobile App Benachrichtigungsoption deaktivieren
                   value: "disable_mobile_app_notify"
         notify_device:
-          name: Devices Notified
+          name: Geräte oder Gruppe zur Benachrichtigung
           description: >
-            Select the devices to be notified when the automation is triggered.
-          default: []
+            Wähle den Benachrichtigungsdienst (z. B. notify.all_devices oder eine andere Gruppe) aus, an den die Nachricht gesendet werden soll.
+          default: "notify.all_devices"
           selector:
-            device:
-              filter:
-                - integration: mobile_app
-              multiple: true
+            service:
         notify_title:
-          name: Title
+          name: Benachrichtigungstitel
           description: >
-            Enter in the title of your notification.
-          default: 📢 Enter Notify Title Here
+            Gib den Titel der Benachrichtigung ein, der sowohl für die Android-Benachrichtigung als auch für die feste (persistente) Benachrichtigung in der UI verwendet wird.
+          default: "📢 Gebe hier den Benachrichtigungstitel ein"
           selector: 
             text:
         notify_message:
-          name: Message
+          name: Benachrichtigungsnachricht
           description: >
-            Enter in the message of your notification.
-          default: Enter Notify Message Here 🙂
+            Gib die Nachricht der Benachrichtigung ein, die sowohl für die Android-Benachrichtigung als auch für die feste Benachrichtigung in der UI verwendet wird.
+          default: "Gebe hier die Benachrichtigungsnachricht ein 🙂"
           selector:
             text:
-        notify_interruption_level:
-          name: Interruption Level - iOS Only
-          description: >
-            On devices running iOS 15 and later, you can configure the interruption level for your notifications to ensure they are delivered according to your preferences.
-            Choose the desired interruption level from the dropdown list.
-            Critical and time-sensitive notifications must be turned ON within the Home Assistant App, and time-sensitive notifications must be allowed in your Focus settings.
-
-
-            For more information on interruption levels [Click Here](https://community.home-assistant.io/t/728100/13)
-          default: active
-          selector:
-            select:
-              mode: dropdown
-              options:
-                - label: Default
-                  value: "active"
-                - label: Critical Notifications
-                  value: "critical"
-                - label: Time Sensitive Notifications
-                  value: "time-sensitive"
-                - label: Quiet Notifications Without Waking Screen
-                  value: "passive"
-        notify_sound:
-          name: Notification Sound - iOS Only
-          description: >
-            The Home Assistant app for iOS includes built-in notification sounds, and you can import sounds from your iOS device into the app.
-            Custom sounds can also be added via iTunes or from your cloud storage.
-            When entering a sound, ensure you use the full filename, including the extension.
-
-
-            For more information on using sounds in the Home Assistant app, [Click Here](https://community.home-assistant.io/t/728100/13)
-          default: []
-          selector:
-            text:
+        # iOS-spezifische Optionen auskommentiert:
+        # notify_interruption_level:
+        #   name: Interruption Level - iOS Only
+        #   description: >
+        #     Auf Geräten mit iOS 15 und höher kannst du das Interruption Level deiner Benachrichtigungen konfigurieren,
+        #     um sicherzustellen, dass sie entsprechend deiner Präferenzen zugestellt werden.
+        #   default: active
+        #   selector:
+        #     select:
+        #       mode: dropdown
+        #       options:
+        #         - label: Standard
+        #           value: "active"
+        #         - label: Kritische Benachrichtigungen
+        #           value: "critical"
+        #         - label: Zeitkritische Benachrichtigungen
+        #           value: "time-sensitive"
+        #         - label: Stille Benachrichtigungen ohne Bildschirmaktivierung
+        #           value: "passive"
+        # notify_sound:
+        #   name: Benachrichtigungston - iOS Only
+        #   description: >
+        #     Die Home Assistant App für iOS bietet integrierte Benachrichtigungstöne. Hier kannst du auch benutzerdefinierte Töne angeben.
+        #   default: []
+        #   selector:
+        #     text:
         notify_data:
-          name: Android Only Options (Optional)
+          name: "Android-spezifische Optionen (Optional)"
           description: >
-            **High Priority** notifications ensure that you receive important alerts immediately.
-            These notifications bypass normal delivery delays and are delivered instantly to your device.
-
-
-            **Sticky Notification** ensure that important alerts are not dismissed when selected. They remain on your notification screen until you actively clear or swipe them away, ensuring that critical information stays visible until addressed.
-            
-
-            **Notification Channel** allow you to easily organize different notification settings,
-            including notification sounds, vibrations, and other device-specific features.
-            If you choose this option, please enter your desired channel name below.
+            **Optionen für Android (Optional):**
+            - **High Priority**: Benachrichtigungen werden sofort zugestellt, um sicherzustellen, dass wichtige Meldungen umgehend empfangen werden.
+            - **Sticky Notification**: Wichtige Meldungen bleiben in der Benachrichtigungsleiste, bis sie aktiv entfernt werden.
+            - **Notification Channel**: Ermöglicht es, verschiedene Benachrichtigungseinstellungen (einschließlich Töne, Vibrationen und andere gerätespezifische Funktionen) zu organisieren. Diese Option wird immer genutzt und erfordert die Eingabe eines Channel-Namens.
           default: []
           selector:
             select:
               multiple: true
               options:
-                - label: High Priority
+                - label: Hochpriorität
                   value: "high_priority"
                 - label: Sticky Notification
                   value: "sticky"
                 - label: Notification Channel
                   value: "channel"
         notify_channel:
-          name: Notification Channel - Android Only
+          name: Notification Channel - Android & Persistent
           description: >
-            If you have chosen to use a notification channel, simply enter the name of an existing channel to apply its pre-configured settings.
-            If you don't have a channel yet, you can create a new one by entering a name here.
-            When your automation sends the first notification, it will create the channel on your device.
-            After the channel is created, you can customize its notification settings to your preference directly on your device.
-
-
-            For more information on notification channels [Click Here](https://community.home-assistant.io/t/728100/13)
-          default: []
+            Gib den Namen des Notification Channels ein. Dieser Channel wird auch als Tag für die persistente Benachrichtigung verwendet.
+            Diese Eingabe ist stets erforderlich. Falls du noch keinen Channel hast, wird dieser beim ersten Senden der Benachrichtigung erstellt und kann anschließend konfiguriert werden.
+            Empfohlenes Icon: mdi:radio
+          default: "default_channel"
           selector:
             text:
-        include_notify_zone:
-          name: Use The Notify Zone Option (Optional)
-          description: >
-            Home Assistant can track the location of your devices, such as mobile phones, within designated zones using the Mobile App's device tracker integration.
-            To utilize this feature, you need to set up zones in Home Assistant, such as Home, Work, or Gym, and ensure your devices are configured for location tracking via the Home Assistant mobile app.
-            When this option is enabled, notifications will only be sent to devices currently located within the selected zone.
-          default: zone_disabled
-          selector:
-            select:
-              options:
-                - label: Enable the zone option
-                  value: "zone_enabled"
-                - label: Disable the zone option
-                  value: "zone_disabled"
-        notify_zone:
-          name: Notify Zone
-          description: >
-            Choose the notify zone for your notifications.
-          default: []
-          selector:
-            entity:
-              filter:
-                domain: zone
-    persistent_notify_settings:
-      name: "Notifications"
-      icon: mdi:bell-outline
-      collapsed: true
-      input:
-        include_persistent_notification:
-          name: Use The UI Notification Option (Optional)
-          description: >
-            Enabling this option will display notifications directly within the Home Assistant user interface (UI). 
-          default: disabled_persistent_notification
-          selector:
-            select:
-              options:
-                - label: Enable UI Notifications
-                  value: "enable_persistent_notification"
-                - label: Disable UI Notifications
-                  value: "disabled_persistent_notification"
-        persistent_title:
-          name: Title
-          description: >
-            Enter in the title of your UI notification.
-          default: 📢 Enter UI Title Here
-          selector:
-            text:
-        persistent_message:
-          name: Message
-          description: >
-            Enter in the message of your UI notification.
-          default: Enter UI Message Here 🙂
-          selector:
-            text:
-    tts_notify_settings:
-      name: "Text-to-Speech Announcement"
-      icon: mdi:bullhorn-outline
-      collapsed: true
-      input:
-        include_tts_announcement:
-          name: Use The Text-to-Speech Announcement Option (Optional)
-          description: >
-            Enabling this option will send a Text-to-Speech notification to the selected Media Players below.
-          default: disable_tts_announcement
-          selector:
-            select:
-              options:
-                - label: Enable Text-to-Speech Announcements
-                  value: "enable_tts_announcement"
-                - label: Disable Text-to-Speech Announcements
-                  value: "disable_tts_announcement"
-        text_to_speech_engine:
-          name: Text-to-Speech Service Provider
-          description: >
-            Select the Text-to-Speech service provider.
-          default: []
-          selector:
-            entity:
-              filter:
-                domain: tts
-        media_player:
-          name: Media Player
-          description: >
-            Select the Media Player/s that will play your Text-to-Speech announcement message.
-          default: []
-          selector:
-            entity:
-              filter:
-                domain: media_player
-              multiple: true
-        notify_tts_message:
-          name: Announcement Message
-          description: >
-            Enter in the message of your Text-to-Speech announcement.
-          default: Enter TTS Message Here
-          selector:
-            text:
-              multiline: true
+        # Use The Notify Zone Option auskommentiert:
+        # include_notify_zone:
+        #   name: Benachrichtigungszonenoption (Optional)
+        #   description: >
+        #     Home Assistant kann den Standort deiner Geräte verfolgen und Benachrichtigungen nur an Geräte in einem bestimmten Bereich senden.
+        #   default: zone_disabled
+        #   selector:
+        #     select:
+        #       options:
+        #         - label: Zone-Option aktivieren
+        #           value: "zone_enabled"
+        #         - label: Zone-Option deaktivieren
+        #           value: "zone_disabled"
+        # notify_zone:
+        #   name: Benachrichtigungszone
+        #   description: >
+        #     Wähle die Zone aus, an die die Benachrichtigung gesendet werden soll.
+        #   default: []
+        #   selector:
+        #     entity:
+        #       filter:
+        #         domain: zone
+    # Feste (persistente) Benachrichtigung (UI) auskommentiert, da Titel und Nachricht mit den Android-Benachrichtigungen synchronisiert werden:
+    # persistent_notify_settings:
+    #   name: "Benachrichtigungen (UI)"
+    #   icon: mdi:bell-outline
+    #   collapsed: true
+    #   input:
+    #     include_persistent_notification:
+    #       name: UI-Benachrichtigungsoption (Optional)
+    #       description: >
+    #         Aktiviert die Anzeige von Benachrichtigungen direkt in der Home Assistant Benutzeroberfläche.
+    #       default: enable_persistent_notification
+    #       selector:
+    #         select:
+    #           options:
+    #             - label: UI-Benachrichtigungen aktivieren
+    #               value: "enable_persistent_notification"
+    #             - label: UI-Benachrichtigungen deaktivieren
+    #               value: "disabled_persistent_notification"
+    #     persistent_title:
+    #       name: Titel
+    #       description: >
+    #         Gib den Titel der UI-Benachrichtigung ein.
+    #       default: "📢 Gebe hier den UI-Titel ein"
+    #       selector:
+    #         text:
+    #     persistent_message:
+    #       name: Nachricht
+    #       description: >
+    #         Gib die Nachricht der UI-Benachrichtigung ein.
+    #       default: "Gebe hier die UI-Nachricht ein 🙂"
+    #       selector:
+    #         text:
+    # Text-to-Speech Optionen auskommentiert:
+    # tts_notify_settings:
+    #   name: "Text-to-Speech Durchsage"
+    #   icon: mdi:bullhorn-outline
+    #   collapsed: true
+    #   input:
+    #     include_tts_announcement:
+    #       name: Text-to-Speech Durchsageoption (Optional)
+    #       description: >
+    #         Aktiviert die Text-to-Speech Durchsage an ausgewählten Medienplayern.
+    #       default: disable_tts_announcement
+    #       selector:
+    #         select:
+    #           options:
+    #             - label: Text-to-Speech Durchsagen aktivieren
+    #               value: "enable_tts_announcement"
+    #             - label: Text-to-Speech Durchsagen deaktivieren
+    #               value: "disable_tts_announcement"
+    #     text_to_speech_engine:
+    #       name: Text-to-Speech Dienstanbieter
+    #       description: >
+    #         Wähle den Text-to-Speech Dienstanbieter aus.
+    #       default: []
+    #       selector:
+    #         entity:
+    #           filter:
+    #             domain: tts
+    #     media_player:
+    #       name: Medienplayer
+    #       description: >
+    #         Wähle die Medienplayer aus, die die Text-to-Speech Durchsage abspielen sollen.
+    #       default: []
+    #       selector:
+    #         entity:
+    #           filter:
+    #             domain: media_player
+    #           multiple: true
+    #     notify_tts_message:
+    #       name: Durchsagenachricht
+    #       description: >
+    #         Gib die Nachricht für die Text-to-Speech Durchsage ein.
+    #       default: "Gebe hier die TTS-Nachricht ein"
+    #       selector:
+    #         text:
+    #           multiline: true
+    # Zeitbezogene Optionen auskommentiert:
+    # time_settings:
+    #   name: "Zeit"
+    #   icon: mdi:clock-outline
+    #   collapsed: true
+    #   input:
+    #     include_time:
+    #       name: Zeitoptionen (Optional)
+    #       description: >
+    #         Nutze die Optionen Startzeit, Endzeit und Wochentage, um die Automatisierung auf bestimmte Zeiten zu beschränken.
+    #       default: time_disabled
+    #       selector:
+    #         select:
+    #           options:
+    #             - label: Zeitoptionen aktivieren
+    #               value: "time_enabled"
+    #             - label: Zeitoptionen deaktivieren
+    #               value: "time_disabled"
+    #     after_time:
+    #       name: Startzeit
+    #       description: >
+    #         Lege die Startzeit fest.
+    #       default: 00:00:00
+    #       selector:
+    #         time:
+    #     before_time:
+    #       name: Endzeit
+    #       description: >
+    #         Lege die Endzeit fest.
+    #       default: 00:00:00
+    #       selector:
+    #         time:
+    #     weekday_options:
+    #       name: Wochentage
+    #       description: >
+    #         Wähle die Wochentage aus, an denen die Automatisierung aktiv sein soll.
+    #       default:
+    #         - mon
+    #         - tue
+    #         - wed
+    #         - thu
+    #         - fri
+    #         - sat
+    #         - sun
+    #       selector:
+    #         select:
+    #           multiple: true
+    #           mode: list
+    #           options:
+    #             - label: Montag
+    #               value: "mon"
+    #             - label: Dienstag
+    #               value: "tue"
+    #             - label: Mittwoch
+    #               value: "wed"
+    #             - label: Donnerstag
+    #               value: "thu"
+    #             - label: Freitag
+    #               value: "fri"
+    #             - label: Samstag
+    #               value: "sat"
+    #             - label: Sonntag
+    #               value: "sun"
     custom_actions_settings:
-      name: "Custom Actions"
+      name: "Benutzerdefinierte Aktionen"
       icon: mdi:code-tags
       collapsed: true
       input:
         include_custom_actions:
-          name: Use The Custom Action Options (Optional)
+          name: Benutzerdefinierte Aktionsoption (Optional)
           description: >
-            Customize your automation with any action you desire.
-            It is commonly used for playing announcements on The Voice (HA), Google, Alexa, etc.
-            Additionally, it can be utilized for other notification services or any other actions you would like to perform.
+            Passe deine Automatisierung mit beliebigen Aktionen an.
+            Zum Beispiel kannst du Durchsagen auf speziellen Lautsprechern ausführen.
           default: disable_custom_actions
           selector:
             select:
               options:
-                - label: Enable Custom Actions
+                - label: Benutzerdefinierte Aktionen aktivieren
                   value: "enable_custom_actions"
-                - label: Disable Custom Actions
+                - label: Benutzerdefinierte Aktionen deaktivieren
                   value: "disable_custom_actions"
         custom_actions:
-          name: Custom Actions
+          name: Benutzerdefinierte Aktionen
           description: >
-            Enter the custom actions you would like to run.
+            Gib die benutzerdefinierten Aktionen an, die ausgeführt werden sollen.
           default: []
           selector:
             action:
-    time_settings:
-      name: "Time"
-      icon: mdi:clock-outline
-      collapsed: true
-      input:
-        include_time:
-          name: Use The Time Options (Optional)
-          description: >
-            Use the "Start Time", **End Time** and the **Weekdays** values to only run the automation between the time periods.
-            This option allows you to disable the automation during sleeping hours to avoid disturbing anyone.
-            Another example is setting the time between 5pm and 9pm for the 'Dinner is Ready' call.
-            This way, if you accidentally activate the trigger outside these hours, the automation will not run.
-          default: time_disabled
-          selector:
-            select:
-              options:
-                - label: Enable the time options
-                  value: "time_enabled"
-                - label: Disable the time options
-                  value: "time_disabled"
-        after_time:
-          name: Start Time
-          description: >
-            Set the start time.
-          default: 00:00:00
-          selector:
-            time:
-        before_time:
-          name: End Time
-          description: >
-            Set the end time.
-          default: 00:00:00
-          selector:
-            time:
-        weekday_options:
-          name: Weekdays
-          description: >
-            Select the days of the week you would like the automation to run. 
-            You must select "Enable the time options" above for the weekdays selections to work.
-          default:
-            - mon
-            - tue
-            - wed
-            - thu
-            - fri
-            - sat
-            - sun
-          selector:
-            select:
-              multiple: true
-              mode: list
-              options:
-                - label: Monday
-                  value: "mon"
-                - label: Tuesday
-                  value: "tue"
-                - label: Wednesday
-                  value: "wed"
-                - label: Thursday
-                  value: "thu"
-                - label: Friday
-                  value: "fri"
-                - label: Saturday
-                  value: "sat"
-                - label: Sunday
-                  value: "sun"
     global_conditions_settings:
-      name: "Global Conditions"
+      name: "Globale Bedingungen"
       icon: mdi:earth
       collapsed: true
       input:
         global_conditions:
-          name: Global Conditions
+          name: Globale Bedingungen
           description: >
-            Enter any global conditions you would like to apply to the automation.
+            Gib globale Bedingungen an, die erfüllt sein müssen, damit die Automatisierung ausgeführt wird.
           default: []
           selector:
             condition:
-
 mode: single
 max_exceeded: silent
 
@@ -497,38 +468,34 @@ variables:
   notify_device: !input notify_device
   notify_title: !input notify_title
   notify_message: !input notify_message
-  notify_interruption_level: !input notify_interruption_level
-  notify_sound: !input notify_sound
+  # iOS-spezifische Variablen auskommentiert:
+  # notify_interruption_level: !input notify_interruption_level
+  # notify_sound: !input notify_sound
   notify_data: !input notify_data
   notify_channel: !input notify_channel
-  include_notify_zone: !input include_notify_zone
-  notify_zone: !input notify_zone
-  include_persistent_notification: !input include_persistent_notification
-  persistent_title: !input persistent_title
-  persistent_message: !input persistent_message
-  include_tts_announcement: !input include_tts_announcement
-  text_to_speech_engine: !input text_to_speech_engine
-  media_player: !input media_player
-  notify_tts_message: !input notify_tts_message
+  # Benachrichtigungszonenoption auskommentiert:
+  # include_notify_zone: !input include_notify_zone
+  # notify_zone: !input notify_zone
+  # Permanente Benachrichtigung: Titel und Nachricht werden von notify_title und notify_message übernommen.
   include_custom_actions: !input include_custom_actions
   custom_actions: !input custom_actions
-  include_time: !input include_time
-  after_time: !input after_time
-  before_time: !input before_time
-  weekday_options: !input weekday_options
+  # Zeitbezogene Variablen auskommentiert:
+  # include_time: !input include_time
+  # after_time: !input after_time
+  # before_time: !input before_time
+  # weekday_options: !input weekday_options
   global_conditions: !input global_conditions
-
-# Notify device option data
 
   device_message_data: >-
     {% set message = namespace(data={}) %}
     {% set push = namespace(data={}) %}
-    {% if notify_interruption_level in ['active', 'critical', 'time-sensitive', 'passive'] %}
-      {% set push.data = dict(push.data, **{ 'interruption-level': notify_interruption_level }) %}
-    {% endif %}
-    {% if notify_sound != [] %}
-      {% set push.data = dict(push.data, **{ 'sound': notify_sound }) %}
-    {% endif %}
+    {# iOS-spezifische Optionen auskommentiert #}
+    {# if notify_interruption_level in ['active', 'critical', 'time-sensitive', 'passive'] %}
+      {# set push.data = dict(push.data, **{ 'interruption-level': notify_interruption_level }) #}
+    {# endif #}
+    {# if notify_sound != [] %}
+      {# set push.data = dict(push.data, **{ 'sound': notify_sound }) #}
+    {# endif #}
     {% if push.data %}
       {% set message.data = dict(message.data, **{ 'push': push.data }) %}
     {% endif %}
@@ -539,23 +506,17 @@ variables:
       {% set message.data = dict(message.data, **{ 'channel': notify_channel }) %}
     {% endif %}
     {% if 'sticky' in notify_data %}
-      {% set message.data = dict(message.data, **{ 'sticky': "true" }) %}
+      {% set message.data = dict(message.data, **{
+          'sticky': "true",
+          'actions': [
+              {'action': notify_channel ~ '_dismiss', 'title': 'Löschen'}
+          ]
+      }) %}
     {% endif %}
+
     {{ message.data }}
 
-  filtered_devices: >
-    {% if include_notify_zone == 'zone_enabled' %}
-      {% set zone_name = notify_zone.split('.')[1] %}
-      {% set device_trackers = notify_device | map('device_entities') | list %}
-      {% set devices_in_zone = expand(device_trackers)
-        | selectattr('state', 'eq', zone_name)
-        | map(attribute='entity_id')
-        | list %}
-      {{ devices_in_zone }}
-    {% else %}
-      {{ notify_device }}
-    {% endif %}
-
+  filtered_devices: "{{ notify_device }}"
 
 triggers:
   - trigger: state
@@ -577,89 +538,95 @@ triggers:
     entity_id: !input trigger_numeric_entity
     below: !input below_state
     for: !input time_delay_state
+  - platform: event
+    event_type: mobile_app_notification_action
+    event_data:
+      action: "{{ notify_channel}}_dismiss"
+    id: clear_notification_trigger
 
-# All Conditions
 condition:
-#Trigger conditions
   - condition: or
     conditions:
-      - condition: and # trigger for button or any state
+      - condition: and
         conditions:
           - condition: trigger
             id: 't0'
           - "{{ trigger_state == 'button_any_state' }}"
-      - condition: and # trigger not for button or any state
+      - condition: and
         conditions:
           - condition: trigger
             id: 't1'
           - "{{ (trigger_state != 'button_any_state') or (trigger_state != 'numeric_state_above') or (trigger_state != 'numeric_state_below') or (trigger_state != 'numeric_state_above_below') }}"
-      - condition: and # trigger for numeric above state
+      - condition: and
         conditions:
           - condition: trigger
             id: 't2'
           - "{{ (trigger_state == 'numeric_state_above') or (trigger_state == 'numeric_state_above_below') }}"
-      - condition: and # trigger for numeric below state
+      - condition: and
         conditions:
           - condition: trigger
             id: 't3'
           - "{{ (trigger_state == 'numeric_state_below') or (trigger_state == 'numeric_state_above_below') }}"
-
-# Check The Time Options
-  - condition: or
-    conditions:
-      - "{{ include_time == 'time_disabled' }}"
-      - condition: and
-        conditions:
-        - condition: time
-          after: !input after_time
-          before: !input before_time
-          weekday: !input weekday_options
-        -  "{{ include_time == 'time_enabled' }}"
-
-# Global Conditions
+      - condition: trigger
+        id: clear_notification_trigger
+  # Zeitbezogene Bedingungen auskommentiert:
+  # - condition: or
+  #   conditions:
+  #     - "{{ include_time == 'time_disabled' }}"
+  #     - condition: and
+  #       conditions:
+  #       - condition: time
+  #         after: !input after_time
+  #         before: !input before_time
+  #         weekday: !input weekday_options
+  #       - "{{ include_time == 'time_enabled' }}"
   - condition: and
     conditions: !input global_conditions
 
 action:
-  - choose:
-    - alias: "Check if notification is enabled"
-      conditions:
-        - "{{ include_notify == 'enable_mobile_app_notify' }}"
-        - "{{ filtered_devices | length > 0 }}"
-      sequence:
-        - alias: Send a notification to each device
-          repeat:
-            for_each: "{{ filtered_devices }}"
-            sequence:
-              - action: "notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify }}"
+  - if:
+      - condition: trigger
+        id: clear_notification_trigger
+    then:
+      - repeat:
+          for_each: "{{ filtered_devices }}"
+          sequence:
+            - service: "{{ repeat.item }}"
+              data:
+                message: "clear_notification"
                 data:
-                  title: !input notify_title
-                  message: !input notify_message
-                  data: "{{ device_message_data }}"
-  - choose:
-    - alias: "Use the persistent notification is enabled"
-      conditions:
-        - condition: template
-          value_template: "{{ include_persistent_notification == 'enable_persistent_notification' }}"
-      sequence:
-        - action: persistent_notification.create
-          data:
-            title: !input persistent_title
-            message: !input persistent_message
-  - choose:
-    - alias: "Check if tts announcement is enabled"
-      conditions:
-        - "{{ include_tts_announcement == 'enable_tts_announcement' }}"
-      sequence:
-        - action: tts.speak
-          target:
-            entity_id: !input text_to_speech_engine
-          data:
-            media_player_entity_id: !input media_player
-            message: !input notify_tts_message
-  - choose:
-    - alias: "Perform the custom action"
-      conditions:
-        - condition: template
-          value_template: "{{ 'enable_custom_actions' in include_custom_actions }}"
-      sequence: !input custom_actions
+                  tag: !input notify_channel
+    else:
+      - alias: "Sende Android-Benachrichtigung"
+        repeat:
+          for_each: "{{ filtered_devices }}"
+          sequence:
+            - service: "{{ repeat.item }}"
+              data:
+                title: !input notify_title
+                message: !input notify_message
+                data: "{{ device_message_data }}"
+      - alias: "Erstelle persistente Benachrichtigung"
+        service: persistent_notification.create
+        data:
+          title: !input notify_title
+          message: !input notify_message
+          notification_id: !input notify_channel
+      # TTS-Aktion auskommentiert:
+      # - choose:
+      #   - alias: "Prüfe, ob TTS-Durchsage aktiviert ist"
+      #     conditions:
+      #       - "{{ include_tts_announcement == 'enable_tts_announcement' }}"
+      #     sequence:
+      #       - service: tts.speak
+      #         target:
+      #           entity_id: !input text_to_speech_engine
+      #         data:
+      #           media_player_entity_id: !input media_player
+      #           message: !input notify_tts_message
+      - choose:
+        - alias: "Führe benutzerdefinierte Aktion aus"
+          conditions:
+            - condition: template
+              value_template: "{{ 'enable_custom_actions' in include_custom_actions }}"
+          sequence: !input custom_actions

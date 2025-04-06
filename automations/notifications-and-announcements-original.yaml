@@ -1,5 +1,5 @@
 blueprint:
-  source_url: "https://gist.githubusercontent.com/Blackshome/180ca4a24af81cd5d843acfc039039bc/raw/e176f77c7be1677771c3c83d77083f011405ad81/notifications-and-announcements.yaml"
+  source_url: "https://raw.githubusercontent.com/tefracky/homeassistant-blueprints/blueprints/automations/notifications-and-announcements.yaml"
   name: Notifications & Announcements
   description: >
     # 📢 Notifications & Announcements
