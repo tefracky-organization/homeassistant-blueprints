@@ -4,189 +4,71 @@ blueprint:
   description: >
     # 📢 Benachrichtigungen
 
-    **Version: 1.0**
+    **Version: 1.1**
 
-    Lege deinen Trigger fest und verbreite die Nachricht via Android-Benachrichtigungen und persistenter UI-Anzeigen.
-    Mit diesem Blueprint kannst du Benachrichtigungen und Durchsagen auslösen, die sowohl mobil gesendet als auch in der Home Assistant‑Oberfläche als persistente Mitteilungen angezeigt werden.
-    Zudem lassen sich Aktions-Buttons einbinden, mit denen individuelle Aktionen direkt aus der Benachrichtigung heraus ausgeführt werden können.
+    Sende smarte Benachrichtigungen bei definierten Auslösern – sowohl an dein Android-Gerät als auch als permanente Mitteilung in der Home Assistant-Oberfläche.
 
-    - **Trigger Optionen:**
+    Mit dieser Blueprint-Vorlage kannst du flexibel Trigger definieren (z. B. Zustände, numerische Werte oder Zeitpunkte) und daraufhin Nachrichten verschicken, inklusive optionaler Sprachansage und interaktiver Aktions-Buttons.
 
-      - Wähle den Zustandswechsel einer oder mehrerer Entitäten, der die Automation auslöst.
-      - Nutze das Nummerierungssystem, um den gewünschten Zustand festzulegen:
-          0 - Benutzerdefinierter Zustand
-          1 - Button oder beliebiger Zustand
-          2 - AN
-          3 - AUS
-          4 - Nicht verfügbar
-          5 - Unbekannt
-          6 - Zuhause
-          7 - Nicht zu Hause
-          8 - Numerischer Zustand – Über
-          9 - Numerischer Zustand – Unter
-          10 - Numerischer Zustand – Über & Unter
+    - **🧲 Trigger & Endzustände**:
+      - Nutze den neuen **Trigger Selector**, um beliebige Ereignisse per UI zu definieren.
+      - Mehrere Trigger sind gleichzeitig möglich.
+      - Optional: Definiere auch den Endzustand (z. B. zum Entfernen einer Notification). Es muss zwingend **id: clear_notification_trigger** angegeben werden.
 
-    - **Benachrichtigungsoptionen:**
+    - **📲 Benachrichtigungen**:
+      - Nachrichten an Mobilgeräte senden.
+      - Als persistente UI-Mitteilungen anzeigen.
+      - Integrierte Text-to-Speech und Aktionen möglich.
 
-      - Sende Nachrichten an mobile Geräte sowie als persistente Mitteilung in der UI.
-      - Ergänze bei Bedarf Text-to-Speech‑Durchsagen und benutzerdefinierte Aktionen.
+    - **🕹 Aktions-Buttons**:
+      - Ergänze individuell konfigurierbare Buttons direkt in der Notification.
 
-    - **Aktions-Buttons:**
+    - **⛔ Globale Bedingungen**:
+      - Lege Bedingungen fest, unter denen die Automation überhaupt ausgeführt werden darf.
 
-      - Definiere Schaltflächen, die in der Benachrichtigung angezeigt werden, um direkt Aktionen auszulösen.
+    ---
+    ## 🆕 Changelog
 
-    - **Globale Bedingungen:**
+    **1.1**
+    - ✨ Umstellung auf `trigger:` Selector – mehr Flexibilität, bessere UI.
+    - ➕ Unterstützung für **mehrere Trigger** gleichzeitig.
+    - 🧼 Entfernt: Komplexe manuelle Zustandstyp-Auswahl.
+    - 🧽 Entfernt: `time_delay_state`, da dies direkt im Trigger möglich ist (`for:`).
+    - 🧩 Trigger & Endzustand in einer Gruppe zusammengeführt.
 
-      - Bestimme globale Bedingungen, die erfüllt sein müssen, damit die Automation ausgeführt wird.
+    ---
+    **Dank an die ursprünglichen Entwickler:**
+      - [Original Notification Blueprint](https://gist.github.com/Blackshome/180ca4a24af81cd5d843acfc039039bc)
+      - [State Notification Actions](https://gist.github.com/Blackshome/06f6f28e76299267b813dac48608f549)
+      - **Spende für den Entwickler:** [Hier klicken](https://www.paypal.com/donate/?hosted_button_id=WAZS3QSDTPGA8)
+      - **FAQ & Hilfe:** [Zum Community-Thread](https://community.home-assistant.io/t/notifications-announcements/728100/2?u=blacky)
 
-    - **Löschen Trigger (Endzustand):**
-
-      - Optional: Lege fest, wann die Benachrichtigung wieder gelöscht wird, wenn ein definierter Endzustand erreicht ist.
-
-
-    **Danke** an die originalen Skripte!
-      - [Notifications and Announcements](https://gist.github.com/Blackshome/180ca4a24af81cd5d843acfc039039bc)
-      - [State Notifications and Actions](https://gist.github.com/Blackshome/06f6f28e76299267b813dac48608f549)
-      - **Spende für den ursprünglichen Entwickler:** [Hier klicken](https://www.paypal.com/donate/?hosted_button_id=WAZS3QSDTPGA8) 🙂
-      - Brauchst du Hilfe? Sieh dir die FAQ an: [Hier klicken](https://community.home-assistant.io/t/notifications-announcements/728100/2?u=blacky)
-      - Unterstützung für Notifications and Actions: [Hier klicken](https://community.home-assistant.io/t/notifications-announcements/728100?u=blacky)
   domain: automation
   input:
-    trigger_settings:
-      name: "Trigger"
-      icon: mdi:cog-outline
-      collapsed: true
+    trigger_section:
+      name: "🧲 Trigger & Endzustand"
+      icon: mdi:toggle-switch
+      collapsed: false
       input:
-        trigger_state:
-          name: Trigger - Zustand
+        dynamic_trigger:
+          name: Trigger-Auslöser
           description: >
-            Bitte wähle den Zustand, der den Trigger auslösen soll.
-            Du kannst aus den zehn verfügbaren Optionen im Dropdown-Menü wählen.
-            Falls deine Option nicht vorhanden ist, gib einfach deinen gewünschten Zustand ein und klicke auf Speichern.
+            Wähle die Trigger aus, die deine Automation starten sollen.
+            Du kannst beliebige Trigger-Typen verwenden (z. B. Zustände, numerische Werte, Zeitpunkte, Events, etc.).
+            Mehrere Trigger sind möglich.
+          selector:
+            trigger:
 
-            0 - Benutzerdefinierter Zustand
-            1 - Button oder beliebiger Zustand
-            2 - AN
-            3 - AUS
-            4 - Nicht verfügbar
-            5 - Unbekannt
-            6 - Zuhause
-            7 - Nicht zu Hause
-            8 - Numerischer Zustand – Über
-            9 - Numerischer Zustand – Unter
-            10 - Numerischer Zustand – Über & Unter
+        clear_trigger:
+          name: Endzustand (optional)
+          description: >
+            Lege optional Trigger für das **automatische Löschen** der Benachrichtigung fest.
+            Z. B. wenn eine Entität wieder den Zustand *OK* erreicht.
+            Es muss zwingend **id: clear_notification_trigger** angegeben werden.
+          default: []
+          selector:
+            trigger:
 
-            Die Nummerierung dient der einfachen Identifikation.
-          default: button_any_state
-          selector:
-            select:
-              custom_value: true
-              mode: dropdown
-              options:
-                - label: "0 - Benutzerdefinierter Zustand (Gib hier deinen Zustand ein)"
-                  value: "custom_state"
-                - label: "1 - Button oder beliebiger Zustand"
-                  value: "button_any_state"
-                - label: "2 - AN"
-                  value: "on"
-                - label: "3 - AUS"
-                  value: "off"
-                - label: "4 - Nicht verfügbar"
-                  value: "unavailable"
-                - label: "5 - Unbekannt"
-                  value: "unknown"
-                - label: "6 - Zuhause"
-                  value: "home"
-                - label: "7 - Nicht zu Hause"
-                  value: "not_home"
-                - label: "8 - Numerischer Zustand – Über"
-                  value: "numeric_state_above"
-                - label: "9 - Numerischer Zustand – Unter"
-                  value: "numeric_state_below"
-                - label: "10 - Numerischer Zustand – Über & Unter"
-                  value: "numeric_state_above_below"
-        trigger_state_entity:
-          name: Zustands-Entitäten
-          description: >
-            **Verwendet in den Optionen 0, 1, 2, 3, 4, 5, 6 oder 7.**
-            Gib die Entitäten an, die den Zustandswechsel auslösen.
-          default: []
-          selector:
-            entity:
-              multiple: true
-        trigger_state:
-          name: "Zustand"
-          description: >
-            **Verwendet in der Option 0.**
-            Gib den Zustand an, der den Zustandswechsel auslöst.
-          default: "ok"
-          selector:
-            text:
-        trigger_numeric_entity:
-          name: Numerische Zustands-Entitäten
-          description: >
-            **Verwendet in den Optionen 8, 9 oder 10.**
-            Gib die Entitäten an, die den numerischen Zustandswechsel überwachen.
-          default: []
-          selector:
-            entity:
-              multiple: true
-        above_state:
-          name: Numerischer Zustand – Über Option
-          description: >
-            **Verwendet in den Optionen 8 oder 10.**
-            Lege den Schwellenwert fest, ab dem der numerische Zustand als *über* gewertet wird.
-          default: 0
-          selector:
-            number:
-              min: -20
-              max: 100
-              step: 1
-              unit_of_measurement: Wert
-        below_state:
-          name: Numerischer Zustand – Unter Option
-          description: >
-            **Verwendet in den Optionen 9 oder 10.**
-            Lege den Schwellenwert fest, unter dem der numerische Zustand als *unter* gewertet wird.
-          default: 0
-          selector:
-            number:
-              min: -20
-              max: 100
-              step: 1
-              unit_of_measurement: Wert
-        time_delay_state:
-          name: Zeitverzögerung
-          description: >
-            **Verwendet in allen Optionen.**
-            Bestimme, wie lange der Triggerzustand kontinuierlich bestehen muss, bevor die Automation startet.
-          default:
-            hours: 0
-            minutes: 0
-            seconds: 0
-          selector:
-            duration:
-    clear_trigger_settings:
-      name: "Löschen Trigger"
-      icon: mdi:close-circle-outline
-      collapsed: true
-      input:
-        clear_state_entity:
-          name: "Entität(en) für Löschen Trigger"
-          description: >
-            Wähle die Entität(en) aus, die überwacht werden sollen, um den Endzustand zu erkennen.
-          default: []
-          selector:
-            entity:
-              multiple: true
-        clear_state:
-          name: "Löschen - Zustand"
-          description: >
-            Gib den Zustand an, bei dem die Benachrichtigung automatisch gelöscht werden soll.
-            Zum Beispiel "ok" oder "normal".
-          default: "ok"
-          selector:
-            text:
     device_notify_settings:
       name: "Benachrichtigungen (Mobil und Persistent)"
       icon: mdi:devices
@@ -406,12 +288,6 @@ mode: single
 max_exceeded: silent
 
 variables:
-  trigger_state: !input trigger_state
-  trigger_state_entity: !input trigger_state_entity
-  trigger_numeric_entity: !input trigger_numeric_entity
-  above_state: !input above_state
-  below_state: !input below_state
-  time_delay_state: !input time_delay_state
   include_notify: !input include_notify
   notify_device: !input notify_device
   notify_title: !input notify_title
@@ -464,87 +340,39 @@ variables:
   filtered_devices: "{{ notify_device }}"
 
 triggers:
-  - trigger: state
-    id: "t0"
-    entity_id: !input trigger_state_entity
-    for: !input time_delay_state
-  - trigger: state
-    id: "t1"
-    entity_id: !input trigger_state_entity
-    to: !input trigger_state
-    for: !input time_delay_state
-  - trigger: numeric_state
-    id: "t2"
-    entity_id: !input trigger_numeric_entity
-    above: !input above_state
-    for: !input time_delay_state
-  - trigger: numeric_state
-    id: "t3"
-    entity_id: !input trigger_numeric_entity
-    below: !input below_state
-    for: !input time_delay_state
-  - platform: event
-    event_type: mobile_app_notification_action
-    event_data:
-      action: "action_button_1"
-      tag: !input notify_channel
-    id: action_button_1
-  - platform: event
-    event_type: mobile_app_notification_action
-    event_data:
-      action: "action_button_2"
-      tag: !input notify_channel
-    id: action_button_2
-  - platform: event
-    event_type: mobile_app_notification_action
-    event_data:
-      action: "action_button_3"
-      tag: !input notify_channel
-    id: action_button_3
+  - triggers: !input dynamic_trigger
+
   - platform: event
     event_type: mobile_app_notification_action
     event_data:
       action: "dismiss"
       tag: !input notify_channel
     id: clear_notification_trigger
-  - trigger: state
-    id: "t_clear"
-    entity_id: !input clear_state_entity
-    id: clear_notification_trigger
 
-condition:
-  - condition: or
-    conditions:
-      - condition: and
-        conditions:
-          - condition: trigger
-            id: "t0"
-          - "{{ trigger_state == 'button_any_state' }}"
-      - condition: and
-        conditions:
-          - condition: trigger
-            id: "t1"
-          - "{{ (trigger_state != 'button_any_state') or (trigger_state != 'numeric_state_above') or (trigger_state != 'numeric_state_below') or (trigger_state != 'numeric_state_above_below') }}"
-      - condition: and
-        conditions:
-          - condition: trigger
-            id: "t2"
-          - "{{ (trigger_state == 'numeric_state_above') or (trigger_state == 'numeric_state_above_below') }}"
-      - condition: and
-        conditions:
-          - condition: trigger
-            id: "t3"
-          - "{{ (trigger_state == 'numeric_state_below') or (trigger_state == 'numeric_state_above_below') }}"
-      - condition: trigger
-        id: action_button_1
-      - condition: trigger
-        id: action_button_2
-      - condition: trigger
-        id: action_button_3
-      - condition: trigger
-        id: clear_notification_trigger
-  - condition: and
-    conditions: !input global_conditions
+  - platform: event
+    event_type: mobile_app_notification_action
+    event_data:
+      action: "action_button_1"
+      tag: !input notify_channel
+    id: action_button_1
+
+  - platform: event
+    event_type: mobile_app_notification_action
+    event_data:
+      action: "action_button_2"
+      tag: !input notify_channel
+    id: action_button_2
+
+  - platform: event
+    event_type: mobile_app_notification_action
+    event_data:
+      action: "action_button_3"
+      tag: !input notify_channel
+    id: action_button_3
+
+  - triggers: !input clear_trigger
+
+condition: !input global_conditions
 
 action:
   - choose:
