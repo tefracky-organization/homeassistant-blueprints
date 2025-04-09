@@ -1,0 +1,130 @@
+blueprint:
+  source_url: "https://raw.githubusercontent.com/tefracky/homeassistant-blueprints/blueprints/scripts/notification-send.yaml"
+  name: Sende Benachrichtigung (Android & Persistent)
+  description: >
+    Dieses Skript sendet eine Benachrichtigung an ausgewählte Android-Geräte
+    und erstellt gleichzeitig eine persistente Benachrichtigung in Home Assistant.
+  domain: script
+  input:
+    notify_device:
+      name: Geräte zur Benachrichtigung
+      description: >
+        Wähle die Geräte aus, die benachrichtigt werden sollen, wenn die Automation ausgelöst wird.
+      default:
+        - 7b4588bc469f471e30087c5757f2ebf4
+        - 30d663ef8b06c87a5bdb80a56af74b15
+        - e0f19df8be795d8d5867ccf822025697
+        - 0cfbf22f9dc76ecf11f78017669b1d51
+        - 170f72bbcf6e90b79e776d8511fc2419
+      selector:
+        device:
+          filter:
+            - integration: mobile_app
+          multiple: true
+    notify_title:
+      name: Benachrichtigungstitel
+      description: >
+        Gib den Titel der Benachrichtigung ein, der sowohl für die Android-Benachrichtigung als auch für die persistente Anzeige in der UI verwendet wird.
+      default: "📢 Gebe hier den Benachrichtigungstitel ein"
+      selector:
+        text:
+    notify_message:
+      name: Benachrichtigungsnachricht
+      description: >
+        Gib die Nachricht ein, die für die Benachrichtigung ausgesendet wird – sowohl als Android-Meldung als auch in der persistenten Anzeige.
+      default: "Gebe hier die Benachrichtigungsnachricht ein 🙂"
+      selector:
+        text:
+    notify_data:
+      name: "Android-spezifische Optionen (Optional)"
+      description: >
+        **Optionen für Android (Optional):**
+        - **Hochpriorität**: Benachrichtigungen werden sofort zugestellt, um wichtige Meldungen umgehend zu übermitteln.
+        - **Feste Benachrichtigung**: Wichtige Meldungen bleiben in der Benachrichtigungsleiste, bis sie aktiv entfernt werden.
+        - **Benachrichtigungskanal**: Organisiert verschiedene Benachrichtigungseinstellungen (Töne, Vibration etc.).
+          Diese Option wird immer genutzt und erfordert die Eingabe eines Kanalnamens.
+      default: []
+      selector:
+        select:
+          multiple: true
+          options:
+            - label: Hochpriorität
+              value: "high_priority"
+            - label: Feste Benachrichtigung
+              value: "sticky"
+    notify_channel:
+      name: Benachrichtigungskanal – Android & Persistent
+      description: >
+        Gib den Namen des Benachrichtigungskanals ein.
+        Dieser Kanal wird auch als Tag für die persistente Benachrichtigung verwendet und – falls noch nicht vorhanden – beim ersten Senden der Benachrichtigung erstellt.
+        Empfohlenes Icon: mdi:radio
+      default: "default-channel"
+      selector:
+        text:
+variables:
+  notify_device: !input notify_device
+  notify_title: !input notify_title
+  notify_message: !input notify_message
+  notify_data: !input notify_data
+  notify_channel: !input notify_channel
+
+  device_message_data: >-
+    {% set message = namespace(data={}) %}
+    {% set push = namespace(data={}) %}
+    {% set actions = [] %}
+    {% if push.data %}
+      {% set message.data = dict(message.data, **{ 'push': push.data }) %}
+    {% endif %}
+    {% if 'high_priority' in notify_data %}
+      {% set message.data = dict(message.data, **{ 'ttl': 0, 'priority': 'high' }) %}
+    {% endif %}
+    {% set message.data = dict(message.data, **{ 'channel': notify_channel }) %}
+    {% set message.data = dict(message.data, **{ 'tag': notify_channel }) %}
+    {{ message.data }}
+
+  filtered_devices: "{{ notify_device }}"
+sequence:
+  - alias: "Sende eine Benachrichtigung an jedes Gerät"
+    repeat:
+      for_each: "{{ filtered_devices }}"
+      sequence:
+        - variables:
+            sensor_entity_id: "sensor.{{ device_attr(repeat.item, 'name') | slugify }}_active_notification_count"
+        - choose:
+            - conditions:
+                - condition: template
+                  value_template: >
+                    {% set sensor_entity_id = "sensor.oliver_handy_active_notification_count" %}
+
+                    {% set notify_title = "Titel" %}
+                    {% set notify_message = "Nachricht" %}
+
+                    {% set ns = namespace(notification_exists=false) %}
+
+                    {% if states(sensor_entity_id) != 'unknown' %}
+                      {% set attributes = states[sensor_entity_id].attributes.items() %}
+                      {% for key, value in attributes %}
+                        {% if key.startswith('android.title_io.homeassistant.companion.android_') %}
+                          {% set idx = key.split('_')[-1] %}
+                          {% set big_text_key = "android.bigText_io.homeassistant.companion.android_" ~ idx %}
+                          {% if value == notify_title and state_attr(sensor_entity_id, big_text_key) == notify_message %}
+                            {% set ns.notification_exists = true %}
+                          {% endif %}
+                        {% endif %}
+                      {% endfor %}
+                    {% endif %}
+
+                    {{ not ns.notification_exists }}
+              sequence:
+                - action: "notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify }}"
+                  data:
+                    title: !input notify_title
+                    message: !input notify_message
+                    data: "{{ device_message_data }}"
+          default: []
+  - alias: "Erstelle persistente Benachrichtigung"
+    service: persistent_notification.create
+    data:
+      title: !input notify_title
+      message: !input notify_message
+      notification_id: !input notify_channel
