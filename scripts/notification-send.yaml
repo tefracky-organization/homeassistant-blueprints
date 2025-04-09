@@ -6,67 +6,189 @@ blueprint:
     und erstellt gleichzeitig eine persistente Benachrichtigung in Home Assistant.
   domain: script
   input:
-    notify_device:
-      name: Geräte zur Benachrichtigung
-      description: >
-        Wähle die Geräte aus, die benachrichtigt werden sollen, wenn die Automation ausgelöst wird.
-      default:
-        - 7b4588bc469f471e30087c5757f2ebf4
-        - 30d663ef8b06c87a5bdb80a56af74b15
-        - e0f19df8be795d8d5867ccf822025697
-        - 0cfbf22f9dc76ecf11f78017669b1d51
-        - 170f72bbcf6e90b79e776d8511fc2419
-      selector:
-        device:
-          filter:
-            - integration: mobile_app
-          multiple: true
-    notify_title:
-      name: Benachrichtigungstitel
-      description: >
-        Gib den Titel der Benachrichtigung ein, der sowohl für die Android-Benachrichtigung als auch für die persistente Anzeige in der UI verwendet wird.
-      default: "📢 Gebe hier den Benachrichtigungstitel ein"
-      selector:
-        text:
-    notify_message:
-      name: Benachrichtigungsnachricht
-      description: >
-        Gib die Nachricht ein, die für die Benachrichtigung ausgesendet wird – sowohl als Android-Meldung als auch in der persistenten Anzeige.
-      default: "Gebe hier die Benachrichtigungsnachricht ein 🙂"
-      selector:
-        text:
-    notify_data:
-      name: "Android-spezifische Optionen (Optional)"
-      description: >
-        **Optionen für Android (Optional):**
-        - **Hochpriorität**: Benachrichtigungen werden sofort zugestellt, um wichtige Meldungen umgehend zu übermitteln.
-        - **Feste Benachrichtigung**: Wichtige Meldungen bleiben in der Benachrichtigungsleiste, bis sie aktiv entfernt werden.
-        - **Benachrichtigungskanal**: Organisiert verschiedene Benachrichtigungseinstellungen (Töne, Vibration etc.).
-          Diese Option wird immer genutzt und erfordert die Eingabe eines Kanalnamens.
-      default: []
-      selector:
-        select:
-          multiple: true
-          options:
-            - label: Hochpriorität
-              value: "high_priority"
-            - label: Feste Benachrichtigung
-              value: "sticky"
-    notify_channel:
-      name: Benachrichtigungskanal – Android & Persistent
-      description: >
-        Gib den Namen des Benachrichtigungskanals ein.
-        Dieser Kanal wird auch als Tag für die persistente Benachrichtigung verwendet und – falls noch nicht vorhanden – beim ersten Senden der Benachrichtigung erstellt.
-        Empfohlenes Icon: mdi:radio
-      default: "default-channel"
-      selector:
-        text:
+    device_notify_settings:
+      name: "Benachrichtigungen (Mobil und Persistent)"
+      icon: mdi:devices
+      collapsed: true
+      input:
+        notify_device:
+          name: Geräte zur Benachrichtigung
+          description: >
+            Wähle die Geräte aus, die benachrichtigt werden sollen, wenn die Automation ausgelöst wird.
+          default:
+            - 7b4588bc469f471e30087c5757f2ebf4
+            - 30d663ef8b06c87a5bdb80a56af74b15
+            - e0f19df8be795d8d5867ccf822025697
+            - 0cfbf22f9dc76ecf11f78017669b1d51
+            - 170f72bbcf6e90b79e776d8511fc2419
+          selector:
+            device:
+              filter:
+                - integration: mobile_app
+              multiple: true
+        notify_title:
+          name: Benachrichtigungstitel
+          description: >
+            Gib den Titel der Benachrichtigung ein, der sowohl für die Android-Benachrichtigung als auch für die persistente Anzeige in der UI verwendet wird.
+          default: "📢 Gebe hier den Benachrichtigungstitel ein"
+          selector:
+            text:
+        notify_message:
+          name: Benachrichtigungsnachricht
+          description: >
+            Gib die Nachricht ein, die für die Benachrichtigung ausgesendet wird – sowohl als Android-Meldung als auch in der persistenten Anzeige.
+          default: "Gebe hier die Benachrichtigungsnachricht ein 🙂"
+          selector:
+            text:
+        notify_data:
+          name: "Android-spezifische Optionen (Optional)"
+          description: >
+            **Optionen für Android (Optional):**
+            - **Hochpriorität**: Benachrichtigungen werden sofort zugestellt, um wichtige Meldungen umgehend zu übermitteln.
+            - **Feste Benachrichtigung**: Wichtige Meldungen bleiben in der Benachrichtigungsleiste, bis sie aktiv entfernt werden.
+            - **Benachrichtigungskanal**: Organisiert verschiedene Benachrichtigungseinstellungen (Töne, Vibration etc.).
+              Diese Option wird immer genutzt und erfordert die Eingabe eines Kanalnamens.
+          default: []
+          selector:
+            select:
+              multiple: true
+              options:
+                - label: Hochpriorität
+                  value: "high_priority"
+                - label: Feste Benachrichtigung
+                  value: "sticky"
+        notify_channel:
+          name: Benachrichtigungskanal – Android & Persistent
+          description: >
+            Gib den Namen des Benachrichtigungskanals ein.
+            Dieser Kanal wird auch als Tag für die persistente Benachrichtigung verwendet und – falls noch nicht vorhanden – beim ersten Senden der Benachrichtigung erstellt.
+            Empfohlenes Icon: mdi:radio
+          default: "default-channel"
+          selector:
+            text:
+    action_settings:
+      name: "Aktions-Buttons"
+      icon: mdi:gesture-tap
+      collapsed: true
+      input:
+        include_action_buttons:
+          name: Optionen für Aktions-Buttons (Optional)
+          description: >
+            Aktiviere die Aktions-Buttons, die in der Benachrichtigung angezeigt werden sollen, um Aktionen per Klick auszulösen.
+
+            **Hinweis**: Es ist nicht zwingend erforderlich, Aktions-Buttons zu verwenden, um eine Aktion auszuführen.
+            Falls du lieber eine automatische Aktion nutzen möchtest, aktiviere stattdessen eine der **Automatischen Aktionen** im untenstehenden Abschnitt.
+
+            ⚠️ Gib die Namen aller aktivierten **Aktions-Buttons** an, einschließlich der Löschen-Schaltfläche.
+            Fehlt eine Angabe, könnte dies dazu führen, dass die Automation nicht korrekt funktioniert.
+          default: []
+          selector:
+            select:
+              options:
+                - label: Aktions-Button 1 aktivieren
+                  value: "enable_action_button_1"
+                - label: Aktions-Button 2 aktivieren
+                  value: "enable_action_button_2"
+                - label: Aktions-Button 3 aktivieren
+                  value: "enable_action_button_3"
+              multiple: true
+        action_button_1:
+          name: Aktions-Button 1
+          description: >
+            Gib den Namen der Schaltfläche an, die in der Benachrichtigung angezeigt wird.
+            Diese Schaltfläche löst alle Aktionen aus, die unter **Aktion 1** im Abschnitt "Automatische Aktionen" definiert sind.
+          default: []
+          selector:
+            text:
+        action_button_2:
+          name: Aktions-Button 2
+          description: >
+            Gib den Namen der Schaltfläche an, die in der Benachrichtigung angezeigt wird.
+            Diese Schaltfläche löst alle Aktionen aus, die unter **Aktion 2** im entsprechenden Abschnitt definiert sind.
+          default: []
+          selector:
+            text:
+        action_button_3:
+          name: Aktions-Button 3
+          description: >
+            Gib den Namen der Schaltfläche an, die in der Benachrichtigung angezeigt wird.
+            Diese Schaltfläche löst alle Aktionen aus, die unter **Aktion 3** im entsprechenden Abschnitt definiert sind.
+          default: []
+          selector:
+            text:
+        action_button_stop:
+          name: Löschen-Schaltfläche
+          description: >
+            Gib den Namen der Löschen-Schaltfläche an, die in der Benachrichtigung angezeigt wird.
+            Diese Schaltfläche bricht alle Aktionen ab und stoppt die Automation.
+            Sie wird automatisch zur Benachrichtigung hinzugefügt, falls eine Aktions-Button aktiviert wurde.
+          default: Löschen
+          selector:
+            text:
+    auto_action_settings:
+      name: "Automatische Aktionen"
+      icon: mdi:code-tags
+      collapsed: true
+      input:
+        include_auto_actions:
+          name: Optionen für automatische Aktionen (Optional)
+          description: >
+            Aktivierst du die automatische Aktion, werden die untenstehenden Aktionen ausgelöst, sobald die Entität den festgelegten Zustand erreicht.
+
+            Bei Verwendung von Aktions-Buttons ist dies nicht zwingend erforderlich, da das Klicken einer Schaltfläche die Aktion auslöst.
+            Falls du die Benachrichtigung verpasst, sorgt diese Option dafür, dass die Startaktionen nach der definierten Zeitverzögerung dennoch ausgeführt werden.
+          default: []
+          selector:
+            select:
+              options:
+                - label: Automatische Aktion 1 aktivieren
+                  value: "enable_action_1"
+                - label: Automatische Aktion 2 aktivieren
+                  value: "enable_action_2"
+                - label: Automatische Aktion 3 aktivieren
+                  value: "enable_action_3"
+              multiple: true
+        action_1:
+          name: Aktion 1
+          description: >
+            Gib die Aktionen ein, die ausgeführt werden sollen, wenn die Entität den definierten Zustand erreicht.
+            Diese Aktionen sind ebenso mit der **Aktions-Button 1** verknüpft.
+          default: []
+          selector:
+            action:
+        action_2:
+          name: Aktion 2
+          description: >
+            Gib die Aktionen ein, die ausgeführt werden sollen, wenn die Entität den definierten Zustand erreicht.
+            Diese Aktionen sind ebenso mit der **Aktions-Button 2** verknüpft.
+          default: []
+          selector:
+            action:
+        action_3:
+          name: Aktion 3
+          description: >
+            Gib die Aktionen ein, die ausgeführt werden sollen, wenn die Entität den definierten Zustand erreicht.
+            Diese Aktionen sind ebenso mit der **Aktions-Button 3** verknüpft.
+          default: []
+          selector:
+            action:
+
 variables:
+  include_notify: !input include_notify
   notify_device: !input notify_device
   notify_title: !input notify_title
   notify_message: !input notify_message
   notify_data: !input notify_data
   notify_channel: !input notify_channel
+  include_action_buttons: !input include_action_buttons
+  action_button_1: !input action_button_1
+  action_button_2: !input action_button_2
+  action_button_3: !input action_button_3
+  action_button_stop: !input action_button_stop
+  include_auto_actions: !input include_auto_actions
+  action_1: !input action_1
+  action_2: !input action_2
+  action_3: !input action_3
 
   device_message_data: >-
     {% set message = namespace(data={}) %}
@@ -80,51 +202,75 @@ variables:
     {% endif %}
     {% set message.data = dict(message.data, **{ 'channel': notify_channel }) %}
     {% set message.data = dict(message.data, **{ 'tag': notify_channel }) %}
+    {% if 'enable_action_button_1' in include_action_buttons %}
+      {% set actions = actions + [{ 'action': 'action_button_1', 'title': action_button_1 }] %}
+    {% endif %}
+    {% if 'enable_action_button_2' in include_action_buttons %}
+      {% set actions = actions + [{ 'action': 'action_button_2', 'title': action_button_2 }] %}
+    {% endif %}
+    {% if 'enable_action_button_3' in include_action_buttons %}
+      {% set actions = actions + [{ 'action': 'action_button_3', 'title': action_button_3 }] %}
+    {% endif %}
+    {% if 'sticky' in notify_data %}
+      {% set message.data = dict(message.data, **{ 'sticky': "true" }) %}
+      {% set actions = actions + [{'action': 'dismiss', 'title': 'Löschen'}] %}
+    {% endif %}
+    {% if actions | length > 0 %}
+      {% set message.data = dict(message.data, **{ 'actions': actions }) %}
+    {% endif %}
     {{ message.data }}
 
   filtered_devices: "{{ notify_device }}"
+
 sequence:
-  - alias: "Sende eine Benachrichtigung an jedes Gerät"
-    repeat:
-      for_each: "{{ filtered_devices }}"
-      sequence:
-        - variables:
-            sensor_entity_id: "sensor.{{ device_attr(repeat.item, 'name') | slugify }}_active_notification_count"
-        - choose:
-            - conditions:
-                - condition: template
-                  value_template: >
-                    {% set sensor_entity_id = "sensor.oliver_handy_active_notification_count" %}
-
-                    {% set notify_title = "Titel" %}
-                    {% set notify_message = "Nachricht" %}
-
-                    {% set ns = namespace(notification_exists=false) %}
-
-                    {% if states(sensor_entity_id) != 'unknown' %}
-                      {% set attributes = states[sensor_entity_id].attributes.items() %}
-                      {% for key, value in attributes %}
-                        {% if key.startswith('android.title_io.homeassistant.companion.android_') %}
-                          {% set idx = key.split('_')[-1] %}
-                          {% set big_text_key = "android.bigText_io.homeassistant.companion.android_" ~ idx %}
-                          {% if value == notify_title and state_attr(sensor_entity_id, big_text_key) == notify_message %}
-                            {% set ns.notification_exists = true %}
-                          {% endif %}
-                        {% endif %}
-                      {% endfor %}
-                    {% endif %}
-
-                    {{ not ns.notification_exists }}
-              sequence:
-                - action: "notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify }}"
-                  data:
-                    title: !input notify_title
-                    message: !input notify_message
-                    data: "{{ device_message_data }}"
-          default: []
   - alias: "Erstelle persistente Benachrichtigung"
     service: persistent_notification.create
     data:
       title: !input notify_title
       message: !input notify_message
       notification_id: !input notify_channel
+  - alias: "Überprüfe, ob mobile Benachrichtigungen aktiviert sind"
+    if:
+      - condition: template
+        value_template: "{{ include_notify == 'enable_mobile_app_notify' }}"
+      - condition: template
+        value_template: "{{ filtered_devices | length > 0 }}"
+    then:
+      - alias: "Sende eine Benachrichtigung an jedes Gerät"
+        repeat:
+          for_each: "{{ filtered_devices }}"
+          sequence:
+            - variables:
+                sensor_entity_id: "sensor.{{ device_attr(repeat.item, 'name') | slugify }}_active_notification_count"
+            - choose:
+                - conditions:
+                    - condition: template
+                      value_template: >
+                        {% set sensor_entity_id = "sensor.oliver_handy_active_notification_count" %}
+
+                        {% set notify_title = "Titel" %}
+                        {% set notify_message = "Nachricht" %}
+
+                        {% set ns = namespace(notification_exists=false) %}
+
+                        {% if states(sensor_entity_id) != 'unknown' %}
+                          {% set attributes = states[sensor_entity_id].attributes.items() %}
+                          {% for key, value in attributes %}
+                            {% if key.startswith('android.title_io.homeassistant.companion.android_') %}
+                              {% set idx = key.split('_')[-1] %}
+                              {% set big_text_key = "android.bigText_io.homeassistant.companion.android_" ~ idx %}
+                              {% if value == notify_title and state_attr(sensor_entity_id, big_text_key) == notify_message %}
+                                {% set ns.notification_exists = true %}
+                              {% endif %}
+                            {% endif %}
+                          {% endfor %}
+                        {% endif %}
+
+                        {{ not ns.notification_exists }}
+                  sequence:
+                    - action: "notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify }}"
+                      data:
+                        title: !input notify_title
+                        message: !input notify_message
+                        data: "{{ device_message_data }}"
+              default: []
