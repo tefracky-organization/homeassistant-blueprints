@@ -4,7 +4,7 @@ blueprint:
   description: >
     # 📢 Benachrichtigungen
 
-    **Version: 1.1**
+    ## **Version 1.2**
 
     Sende smarte Benachrichtigungen bei definierten Auslösern – sowohl an dein Android-Gerät als auch als permanente Mitteilung in der Home Assistant-Oberfläche.
 
@@ -26,18 +26,35 @@ blueprint:
     - **⛔ Globale Bedingungen**:
       - Lege Bedingungen fest, unter denen die Automation überhaupt ausgeführt werden darf.
 
-    ---
-    ## 🆕 Changelog
+    ## Changelog
 
-    **1.1**
+    **1.2**: Benachrichtigungen senden und löschen an Skripte ausgelagert
+
+    - 🗑 **Refaktorierte Löschlogik:**
+      Statt der bisherigen, manuellen Abfolge zum Löschen persistenter Benachrichtigungen wird nun das zentrale Skript `script.notification_delete` aufgerufen. Dies sorgt für einen klareren Ablauf und verbesserte Wartbarkeit.
+    
+    - 🔔 **Modularisierte Benachrichtigungsroutine:**
+      Ein neuer Choose-Zweig „Check if notification is enabled“ überprüft, ob mobile App-Benachrichtigungen aktiviert sind und ob Geräte vorhanden sind, und löst dann das Skript `script.notification_send` aus – inklusive Übergabe aller relevanten Parameter wie Titel, Nachricht, Daten und Aktions-Buttons.
+    
+    - 🧹 **Bereinigung der Legacy-Struktur:**
+      Der bisher verwendete `default`-Block, der separate Zuständigkeiten für Gerätebenachrichtigungen und das Erstellen persistenter Nachrichten innehatte, wurde komplett entfernt, um Redundanzen abzubauen und die Logik zu vereinheitlichen.
+    
+    - ⚙️ **Integrierte benutzerdefinierte Aktionen:**
+      Die Option, benutzerdefinierte Aktionen auszuführen, bleibt erhalten – in den neuen Benachrichtigungs-Branch integriert, um den Ablauf zu vereinheitlichen und die Konfiguration übersichtlicher zu gestalten.
+
+    **1.1**: Aktionen zu Benachrichtigungen hinzugefügt
+    
     - ✨ Umstellung auf `trigger:` Selector – mehr Flexibilität, bessere UI.
+    
     - ➕ Unterstützung für **mehrere Trigger** gleichzeitig.
+    
     - 🧼 Entfernt: Komplexe manuelle Zustandstyp-Auswahl.
+    
     - 🧽 Entfernt: `time_delay_state`, da dies direkt im Trigger möglich ist (`for:`).
+    
     - 🧩 Trigger & Endzustand in einer Gruppe zusammengeführt.
 
-    ---
-    **Dank an die ursprünglichen Entwickler:**
+    **Vielen Dank an die ursprünglichen Entwickler:**
       - [Original Notification Blueprint](https://gist.github.com/Blackshome/180ca4a24af81cd5d843acfc039039bc)
       - [State Notification Actions](https://gist.github.com/Blackshome/06f6f28e76299267b813dac48608f549)
       - **Spende für den Entwickler:** [Hier klicken](https://www.paypal.com/donate/?hosted_button_id=WAZS3QSDTPGA8)
@@ -396,35 +413,36 @@ action:
           - condition: trigger
             id: clear_notification_trigger
         sequence:
-          - service: persistent_notification.dismiss
+          - action: script.notification_delete
+            metadata: {}
             data:
-              notification_id: !input notify_channel
-          - repeat:
-              for_each: "{{ filtered_devices }}"
-              sequence:
-                - action: "notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify }}"
-                  data:
-                    message: "clear_notification"
-                    data:
-                      tag: !input notify_channel
-    default:
-      - alias: "Sende eine Benachrichtigung an jedes Gerät"
-        repeat:
-          for_each: "{{ filtered_devices }}"
-          sequence:
-            - action: "notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify }}"
-              data:
-                title: !input notify_title
-                message: !input notify_message
-                data: "{{ device_message_data }}"
-      - alias: "Erstelle persistente Benachrichtigung"
-        service: persistent_notification.create
-        data:
-          title: !input notify_title
-          message: !input notify_message
-          notification_id: !input notify_channel
-      - if:
-          - condition: template
-            alias: "Führe benutzerdefinierte Aktion aus"
-            value_template: "{{ 'enable_custom_actions' in include_custom_actions }}"
-        then: !input custom_actions
+              notify_device: "{{ notify_device }}"
+              notify_channel: "{{ notify_channel }}"
+      - alias: "Check if notification is enabled"
+        conditions:
+          - "{{ include_notify == 'enable_mobile_app_notify' }}"
+          - "{{ filtered_devices | length > 0 }}"
+        sequence:
+          - action: script.notification_send
+            metadata: {}
+            data:
+              include_notify: "{{ include_notify }}"
+              notify_device: "{{ notify_device }}"
+              notify_title: "{{ notify_title }}"
+              notify_message: "{{ notify_message }}"
+              notify_data: "{{ notify_data }}"
+              notify_channel: "{{ notify_channel }}"
+              include_action_buttons: "{{ include_action_buttons }}"
+              action_button_1: "{{ action_button_1 }}"
+              action_button_2: "{{ action_button_2 }}"
+              action_button_3: "{{ action_button_3 }}"
+              action_button_stop: "{{ action_button_stop }}"
+              include_auto_actions: "{{ include_auto_actions }}"
+              action_1: "{{ action_1 }}"
+              action_2: "{{ action_2 }}"
+              action_3: "{{ action_3 }}"
+          - if:
+              - condition: template
+                alias: "Führe benutzerdefinierte Aktion aus"
+                value_template: "{{ 'enable_custom_actions' in include_custom_actions }}"
+            then: !input custom_actions
