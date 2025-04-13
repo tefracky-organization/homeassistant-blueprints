@@ -120,7 +120,7 @@ blueprint:
           name: Löschen-Schaltfläche
           description: >
             Gib den Namen der Löschen-Schaltfläche an, die in der Benachrichtigung angezeigt wird.
-            Diese Schaltfläche bricht alle Aktionen ab und stoppt die Automation.
+            Diese Schaltfläche löscht alle Benachrichtigungen, die mit dem angegebenen **Benachrichtigungskanal** verbunden sind.
             Sie wird automatisch zur Benachrichtigung hinzugefügt, falls eine Aktions-Button aktiviert wurde.
           default: Löschen
           selector:
@@ -130,24 +130,6 @@ blueprint:
       icon: mdi:code-tags
       collapsed: true
       input:
-        include_auto_actions:
-          name: Optionen für automatische Aktionen (Optional)
-          description: >
-            Aktivierst du die automatische Aktion, werden die untenstehenden Aktionen ausgelöst, sobald die Entität den festgelegten Zustand erreicht.
-
-            Bei Verwendung von Aktions-Buttons ist dies nicht zwingend erforderlich, da das Klicken einer Schaltfläche die Aktion auslöst.
-            Falls du die Benachrichtigung verpasst, sorgt diese Option dafür, dass die Startaktionen nach der definierten Zeitverzögerung dennoch ausgeführt werden.
-          default: []
-          selector:
-            select:
-              options:
-                - label: Automatische Aktion 1 aktivieren
-                  value: "enable_action_1"
-                - label: Automatische Aktion 2 aktivieren
-                  value: "enable_action_2"
-                - label: Automatische Aktion 3 aktivieren
-                  value: "enable_action_3"
-              multiple: true
         action_1:
           name: Aktion 1
           description: >
@@ -185,7 +167,6 @@ variables:
   action_button_2: !input action_button_2
   action_button_3: !input action_button_3
   action_button_stop: !input action_button_stop
-  include_auto_actions: !input include_auto_actions
   action_1: !input action_1
   action_2: !input action_2
   action_3: !input action_3
