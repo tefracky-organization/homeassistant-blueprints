@@ -2,8 +2,8 @@ blueprint:
   source_url: "https://raw.githubusercontent.com/tefracky/homeassistant-blueprints/blueprints/scripts/notification-send.yaml"
   name: Sende Benachrichtigung (Android & Persistent)
   description: >
-    Dieses Skript sendet eine Benachrichtigung an ausgewählte Android-Geräte
-    und erstellt gleichzeitig eine persistente Benachrichtigung in Home Assistant.
+    Dieses Skript sendet eine Benachrichtigung an definierte Geräte (inkl. optionalem Autogerät)
+    und erstellt gleichzeitig eine persistente Benachrichtigung.
   domain: script
   input:
     device_notify_settings:
@@ -11,32 +11,19 @@ blueprint:
       icon: mdi:devices
       collapsed: true
       input:
-        notify_device:
-          name: Geräte zur Benachrichtigung
-          description: >
-            Wähle die Geräte aus, die benachrichtigt werden sollen, wenn die Automation ausgelöst wird.
-          default:
-            - 7b4588bc469f471e30087c5757f2ebf4
-            - 30d663ef8b06c87a5bdb80a56af74b15
-            - e0f19df8be795d8d5867ccf822025697
-            - 0cfbf22f9dc76ecf11f78017669b1d51
-            - 170f72bbcf6e90b79e776d8511fc2419
-          selector:
-            device:
-              filter:
-                - integration: mobile_app
-              multiple: true
         notify_title:
           name: Benachrichtigungstitel
           description: >
-            Gib den Titel der Benachrichtigung ein, der sowohl für die Android-Benachrichtigung als auch für die persistente Anzeige in der UI verwendet wird.
+            Gib den Titel der Benachrichtigung ein, der sowohl für die Android-Benachrichtigung
+            als auch für die persistente Anzeige in der UI verwendet wird.
           default: "📢 Gebe hier den Benachrichtigungstitel ein"
           selector:
             text:
         notify_message:
           name: Benachrichtigungsnachricht
           description: >
-            Gib die Nachricht ein, die für die Benachrichtigung ausgesendet wird – sowohl als Android-Meldung als auch in der persistenten Anzeige.
+            Gib die Nachricht ein, die für die Benachrichtigung ausgesendet wird – sowohl als Android-Meldung
+            als auch in der persistenten Anzeige.
           default: "Gebe hier die Benachrichtigungsnachricht ein 🙂"
           selector:
             text:
@@ -57,15 +44,24 @@ blueprint:
                   value: "high_priority"
                 - label: Feste Benachrichtigung
                   value: "sticky"
-        notify_channel:
-          name: Benachrichtigungskanal – Android & Persistent
+        notify_tag:
+          name: Benachrichtigungstag – Android & Persistent
           description: >
-            Gib den Namen des Benachrichtigungskanals ein.
-            Dieser Kanal wird auch als Tag für die persistente Benachrichtigung verwendet und – falls noch nicht vorhanden – beim ersten Senden der Benachrichtigung erstellt.
-            Empfohlenes Icon: mdi:radio
-          default: "default-channel"
+            Gib den Namen des Benachrichtigungstags ein.
+            Dieser Tag wird auch als Kanal für die Android-Benachrichtigung verwendet und – falls noch nicht vorhanden –
+            beim ersten Senden der Benachrichtigung erstellt.
+            **Hinweis:** Bitte ausschließlich Kleinbuchstaben und Unterstriche verwenden (z. B. "default_channel").
+          default: "default_channel"
           selector:
             text:
+        send_car:
+          name: "Auto-Benachrichtigung aktivieren"
+          description: >
+            Wenn aktiviert (Standard: true) wird das Gerät 
+            7b4588bc469f471e30087c5757f2ebf4 in die Benachrichtigungsliste aufgenommen.
+          default: true
+          selector:
+            boolean:
     action_settings:
       name: "Aktions-Buttons"
       icon: mdi:gesture-tap
@@ -77,8 +73,9 @@ blueprint:
             Aktiviere die Aktions-Buttons, die in der Benachrichtigung angezeigt werden sollen, um Aktionen per Klick auszulösen.
 
             **Hinweis**: Es ist nicht zwingend erforderlich, Aktions-Buttons zu verwenden, um eine Aktion auszuführen.
-            Falls du lieber eine automatische Aktion nutzen möchtest, aktiviere stattdessen eine der **Automatischen Aktionen** im untenstehenden Abschnitt.
-
+            Falls du lieber eine automatische Aktion nutzen möchtest, aktiviere stattdessen eine der **Automatischen Aktionen**
+            im untenstehenden Abschnitt.
+            
             ⚠️ Gib die Namen aller aktivierten **Aktions-Buttons** an, einschließlich der Löschen-Schaltfläche.
             Fehlt eine Angabe, könnte dies dazu führen, dass die Automation nicht korrekt funktioniert.
           default: []
@@ -96,7 +93,8 @@ blueprint:
           name: Aktions-Button 1
           description: >
             Gib den Namen der Schaltfläche an, die in der Benachrichtigung angezeigt wird.
-            Diese Schaltfläche löst alle Aktionen aus, die unter **Aktion 1** im Abschnitt "Automatische Aktionen" definiert sind.
+            Diese Schaltfläche löst alle Aktionen aus, die unter **Aktion 1** im Abschnitt "Automatische Aktionen"
+            definiert sind.
           default: []
           selector:
             text:
@@ -116,12 +114,12 @@ blueprint:
           default: []
           selector:
             text:
-        action_button_stop:
+        action_button_delete:
           name: Löschen-Schaltfläche
           description: >
             Gib den Namen der Löschen-Schaltfläche an, die in der Benachrichtigung angezeigt wird.
             Diese Schaltfläche löscht alle Benachrichtigungen, die mit dem angegebenen **Benachrichtigungskanal** verbunden sind.
-            Sie wird automatisch zur Benachrichtigung hinzugefügt, falls eine Aktions-Button aktiviert wurde.
+            Sie wird automatisch zur Benachrichtigung hinzugefügt, falls ein Aktions-Button aktiviert wurde.
           default: Löschen
           selector:
             text:
@@ -156,33 +154,40 @@ blueprint:
             action:
 
 variables:
-  include_notify: !input include_notify
-  notify_device: !input notify_device
   notify_title: !input notify_title
   notify_message: !input notify_message
   notify_data: !input notify_data
-  notify_channel: !input notify_channel
+  notify_tag: !input notify_tag
+  send_car: !input send_car
   include_action_buttons: !input include_action_buttons
   action_button_1: !input action_button_1
   action_button_2: !input action_button_2
   action_button_3: !input action_button_3
-  action_button_stop: !input action_button_stop
+  action_button_delete: !input action_button_delete
   action_1: !input action_1
   action_2: !input action_2
   action_3: !input action_3
 
+  notify_devices: >-
+    {% set devices = [
+      "30d663ef8b06c87a5bdb80a56af74b15",
+      "e0f19df8be795d8d5867ccf822025697",
+      "0cfbf22f9dc76ecf11f78017669b1d51",
+      "170f72bbcf6e90b79e776d8511fc2419"
+    ] %}
+    {% if send_car %}
+      {% set _ = devices.append("7b4588bc469f471e30087c5757f2ebf4") %}
+    {% endif %}
+    {{ devices }}
+
   device_message_data: >-
     {% set message = namespace(data={}) %}
-    {% set push = namespace(data={}) %}
     {% set actions = [] %}
-    {% if push.data %}
-      {% set message.data = dict(message.data, **{ 'push': push.data }) %}
-    {% endif %}
     {% if 'high_priority' in notify_data %}
       {% set message.data = dict(message.data, **{ 'ttl': 0, 'priority': 'high' }) %}
     {% endif %}
-    {% set message.data = dict(message.data, **{ 'channel': notify_channel }) %}
-    {% set message.data = dict(message.data, **{ 'tag': notify_channel }) %}
+    {% set message.data = dict(message.data, **{ 'channel': notify_tag }) %}
+    {% set message.data = dict(message.data, **{ 'tag': notify_tag }) %}
     {% if 'enable_action_button_1' in include_action_buttons %}
       {% set actions = actions + [{ 'action': 'action_button_1', 'title': action_button_1 }] %}
     {% endif %}
@@ -194,64 +199,67 @@ variables:
     {% endif %}
     {% if 'sticky' in notify_data %}
       {% set message.data = dict(message.data, **{ 'sticky': "true" }) %}
-      {% set actions = actions + [{'action': 'dismiss', 'title': 'Löschen'}] %}
+      {% set actions = actions + [{ 'action': 'dismiss', 'title': action_button_delete }] %}
     {% endif %}
     {% if actions | length > 0 %}
       {% set message.data = dict(message.data, **{ 'actions': actions }) %}
     {% endif %}
     {{ message.data }}
 
-  filtered_devices: "{{ notify_device }}"
-
 sequence:
-  - alias: "Erstelle persistente Benachrichtigung"
-    service: persistent_notification.create
-    data:
-      title: !input notify_title
-      message: !input notify_message
-      notification_id: !input notify_channel
-  - alias: "Überprüfe, ob mobile Benachrichtigungen aktiviert sind"
-    if:
-      - condition: template
-        value_template: "{{ include_notify == 'enable_mobile_app_notify' }}"
-      - condition: template
-        value_template: "{{ filtered_devices | length > 0 }}"
-    then:
+  - alias: "Führe passende Aktion je nach Button aus"
+    choose:
+      - conditions: "{{ action == 'action_button_1' }}"
+        sequence: !input action_1
+
+      - conditions: "{{ action == 'action_button_2' }}"
+        sequence: !input action_2
+
+      - conditions: "{{ action == 'action_button_3' }}"
+        sequence: !input action_3
+
+      - conditions: "{{ action == 'dismiss' }}"
+        sequence:
+          - action: script.notification_delete
+            metadata: {}
+            data:
+              notify_tag: "{{ tag }}"
+    default:
+      - alias: "Erstelle persistente Benachrichtigung"
+        service: persistent_notification.create
+        data:
+          title: !input notify_title
+          message: !input notify_message
+          notification_id: !input notify_tag
       - alias: "Sende eine Benachrichtigung an jedes Gerät"
         repeat:
-          for_each: "{{ filtered_devices }}"
+          for_each: "{{ notify_devices }}"
           sequence:
             - variables:
                 sensor_entity_id: "sensor.{{ device_attr(repeat.item, 'name') | slugify }}_active_notification_count"
-            - choose:
-                - conditions:
-                    - condition: template
-                      value_template: >
-                        {% set sensor_entity_id = "sensor.oliver_handy_active_notification_count" %}
+            - if:
+                - condition: template
+                  value_template: >
+                    {% set sensor_entity_id = "sensor.{{ device_attr(repeat.item, 'name') | slugify }}_active_notification_count" %}
+                    {% set ns = namespace(notification_exists=false) %}
 
-                        {% set notify_title = "Titel" %}
-                        {% set notify_message = "Nachricht" %}
-
-                        {% set ns = namespace(notification_exists=false) %}
-
-                        {% if states(sensor_entity_id) != 'unknown' %}
-                          {% set attributes = states[sensor_entity_id].attributes.items() %}
-                          {% for key, value in attributes %}
-                            {% if key.startswith('android.title_io.homeassistant.companion.android_') %}
-                              {% set idx = key.split('_')[-1] %}
-                              {% set big_text_key = "android.bigText_io.homeassistant.companion.android_" ~ idx %}
-                              {% if value == notify_title and state_attr(sensor_entity_id, big_text_key) == notify_message %}
-                                {% set ns.notification_exists = true %}
-                              {% endif %}
-                            {% endif %}
-                          {% endfor %}
+                    {% if states(sensor_entity_id) != 'unknown' %}
+                      {% set attributes = states[sensor_entity_id].attributes.items() %}
+                      {% for key, value in attributes %}
+                        {% if key.startswith('android.title_io.homeassistant.companion.android_') %}
+                          {% set idx = key.split('_')[-1] %}
+                          {% set big_text_key = "android.bigText_io.homeassistant.companion.android_" ~ idx %}
+                          {% if value == notify_title and state_attr(sensor_entity_id, big_text_key) == notify_message %}
+                            {% set ns.notification_exists = true %}
+                          {% endif %}
                         {% endif %}
+                      {% endfor %}
+                    {% endif %}
 
-                        {{ not ns.notification_exists }}
-                  sequence:
-                    - action: "notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify }}"
-                      data:
-                        title: !input notify_title
-                        message: !input notify_message
-                        data: "{{ device_message_data }}"
-              default: []
+                    {{ not ns.notification_exists }}
+              then:
+                - action: "notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify }}"
+                  data:
+                    title: !input notify_title
+                    message: !input notify_message
+                    data: "{{ device_message_data }}"
