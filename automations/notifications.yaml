@@ -4,16 +4,17 @@ blueprint:
   description: >
     # 📢 Benachrichtigungen
 
-    ## **Version 1.3**
+    ## **Version 1.4**
 
     Sende smarte Benachrichtigungen bei definierten Auslösern – sowohl an dein Android-Gerät als auch als permanente Mitteilung in der Home Assistant-Oberfläche.
 
-    Mit dieser Blueprint-Vorlage kannst du flexibel Trigger definieren (z. B. Zustände, numerische Werte oder Zeitpunkte) und daraufhin Nachrichten verschicken, inklusive optionaler Sprachansage und interaktiver Aktions-Buttons.
+    Mit dieser Blueprint-Vorlage kannst du flexibel Trigger definieren (z. B. Zustände, numerische Werte oder Zeitpunkte) und daraufhin Nachrichten verschicken – inklusive optionaler Sprachansage, interaktiver Aktions-Buttons und erweiterter Bedingungslogik.
 
     - **🧲 Trigger & Endzustände**:
-      - Nutze den neuen **Trigger Selector**, um beliebige Ereignisse per UI zu definieren.
+      - Nutze den **Trigger Selector**, um beliebige Ereignisse per UI zu definieren.
       - Mehrere Trigger sind gleichzeitig möglich.
-      - Optional: Definiere auch den Endzustand (z. B. zum Entfernen einer Notification). Es muss zwingend **id: clear_notification_trigger** angegeben werden.
+      - Definiere einen Endzustand (z. B. zum Entfernen einer Notification) – inklusive **zusätzlicher Bedingungen**.
+      - Unterstützt **Bedingungen beim Triggern und Löschen**, um nur bei bestimmten Konstellationen auszulösen.
 
     - **📲 Benachrichtigungen**:
       - Nachrichten an Mobilgeräte senden.
@@ -23,10 +24,27 @@ blueprint:
     - **🕹 Aktions-Buttons**:
       - Ergänze individuell konfigurierbare Buttons direkt in der Notification.
 
-    - **⛔ Globale Bedingungen**:
-      - Lege Bedingungen fest, unter denen die Automation überhaupt ausgeführt werden darf.
+    - **⛔ Bedingungen & Kontrolle**:
+      - Lege globale Bedingungen fest, unter denen die Automation überhaupt ausgeführt werden darf.
+      - Zusätzliche Bedingungen **nur für Trigger- oder Lösch-Ereignisse** definierbar.
 
     ## Changelog
+
+    **1.4**: Zusätzliche Bedingungen für Trigger- und Endzustand
+
+    - ✅ **Neue Bedingungsoptionen hinzugefügt:**
+      - `trigger_conditions`: Ermöglicht es, nur dann Benachrichtigungen zu senden, wenn zusätzliche Bedingungen beim Trigger erfüllt sind.
+      - `clear_conditions`: Ermöglicht das automatische Löschen von Benachrichtigungen nur bei erfüllten Bedingungen (z. B. Zustand + Zeitspanne + Anwesenheit).
+
+    - 🧠 **Intelligentere Ablaufsteuerung:**
+      - Die Bedingungen wurden in die `choose:`-Logik integriert und verhindern zuverlässig das Ausführen der Hauptaktionen bei nicht erfüllten Voraussetzungen.
+
+    - 🧼 **Klarere Struktur:**
+      - Trennung der Bedingungslogik für Trigger und Endzustände – mehr Flexibilität, bessere Lesbarkeit.
+
+    - 🛠 **Fehlerbehebung:**
+      - Korrektur der Trigger-ID für den Button „Löschen“ zu `clear_notification_button`, um Konflikte mit `clear_notification_trigger` zu vermeiden.
+
 
     **1.3**: Verbesserungen an den Benachrichtigungsoptionen und der Benutzerfreundlichkeit
 
@@ -89,7 +107,6 @@ blueprint:
             Mehrere Trigger sind möglich.
           selector:
             trigger:
-
         clear_trigger:
           name: Endzustand (optional)
           description: >
@@ -99,7 +116,6 @@ blueprint:
           default: []
           selector:
             trigger:
-
     device_notify_settings:
       name: "Benachrichtigungen (Mobil und Persistent)"
       icon: mdi:devices
@@ -119,6 +135,7 @@ blueprint:
           default: "Gebe hier die Benachrichtigungsnachricht ein 🙂"
           selector:
             text:
+              multiline: true
         notify_data:
           name: "Android-spezifische Optionen (Optional)"
           description: >
@@ -141,7 +158,6 @@ blueprint:
           description: >
             Gib den Namen des Benachrichtigungskanals ein.
             Dieser Kanal wird auch als Tag für die persistente Benachrichtigung verwendet und – falls noch nicht vorhanden – beim ersten Senden der Benachrichtigung erstellt.
-            Empfohlenes Icon: mdi:radio
           default: "default_channel"
           selector:
             text:
@@ -266,8 +282,8 @@ blueprint:
           default: []
           selector:
             action:
-    global_conditions_settings:
-      name: "Globale Bedingungen"
+    conditions_settings:
+      name: "Bedingungen"
       icon: mdi:earth
       collapsed: true
       input:
@@ -278,6 +294,21 @@ blueprint:
           default: []
           selector:
             condition:
+        trigger_conditions:
+          name: Bedingungen für Trigger-Auslöser
+          description: >
+            Gib Bedingungen ein, die beim Auslösen der Trigger zusätzlich erfüllt sein müssen.
+          default: []
+          selector:
+            condition:
+        clear_conditions:
+          name: Bedingungen für Endzustand
+          description: >
+            Gib Bedingungen ein, die beim Eintreten des Endzustands zusätzlich erfüllt sein müssen.
+          default: []
+          selector:
+            condition:
+
 mode: restart
 
 variables:
@@ -296,6 +327,8 @@ variables:
   include_custom_actions: !input include_custom_actions
   custom_actions: !input custom_actions
   global_conditions: !input global_conditions
+  trigger_conditions: !input trigger_conditions
+  clear_conditions: !input clear_conditions
 
   notify_devices: >-
     {% set devices = [
@@ -343,7 +376,7 @@ triggers:
     event_data:
       action: "dismiss"
       tag: !input notify_tag
-    id: clear_notification_trigger
+    id: clear_notification_button
 
   - platform: event
     event_type: mobile_app_notification_action
@@ -387,56 +420,74 @@ action:
           - condition: trigger
             id: action_button_3
         sequence: !input action_3
-      - alias: "Prüfe, ob Löschen-Schaltfläche gedrückt oder ob ob Endzustand erreicht wurde (Lösch-Trigger)"
+      - alias: "Prüfe, ob Löschen-Schaltfläche gedrückt oder Endzustand erreicht wurde (Lösch-Trigger)"
         conditions:
-          - condition: trigger
-            id: clear_notification_trigger
+          - condition: or
+            conditions:
+              - condition: trigger
+                id: clear_notification_button
+              - condition: trigger
+                id: clear_notification_trigger
         sequence:
-          - action: script.notification_delete
-            metadata: {}
-            data:
-              notify_tag: "{{ notify_tag }}"
-    default:
-      - alias: "Erstelle persistente Benachrichtigung"
-        service: persistent_notification.create
-        data:
-          title: !input notify_title
-          message: !input notify_message
-          notification_id: !input notify_tag
-      - alias: "Sende eine Benachrichtigung an jedes Gerät"
-        repeat:
-          for_each: "{{ notify_devices }}"
-          sequence:
-            - variables:
-                sensor_entity_id: "sensor.{{ device_attr(repeat.item, 'name') | slugify }}_active_notification_count"
-            - if:
-                - condition: template
-                  value_template: >
-                    {% set sensor_entity_id = "sensor.{{ device_attr(repeat.item, 'name') | slugify }}_active_notification_count" %}
-                    {% set ns = namespace(notification_exists=false) %}
-
-                    {% if states(sensor_entity_id) != 'unknown' %}
-                      {% set attributes = states[sensor_entity_id].attributes.items() %}
-                      {% for key, value in attributes %}
-                        {% if key.startswith('android.title_io.homeassistant.companion.android_') %}
-                          {% set idx = key.split('_')[-1] %}
-                          {% set big_text_key = "android.bigText_io.homeassistant.companion.android_" ~ idx %}
-                          {% if value == notify_title and state_attr(sensor_entity_id, big_text_key) == notify_message %}
-                            {% set ns.notification_exists = true %}
-                          {% endif %}
-                        {% endif %}
-                      {% endfor %}
-                    {% endif %}
-
-                    {{ not ns.notification_exists }}
-              then:
-                - action: "notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify }}"
-                  data:
-                    title: !input notify_title
-                    message: !input notify_message
-                    data: "{{ device_message_data }}"
-      - if:
+          - choose:
+              - conditions: !input clear_conditions
+                sequence:
+                  - action: script.notification_delete
+                    data:
+                      notify_tag: "{{ notify_tag }}"
+            default:
+              - action: script.notification_delete
+                data:
+                  notify_tag: "{{ notify_tag }}"
+      - alias: "Prüfe Trigger-Bedingungen für Hauptbenachrichtigung"
+        conditions:
           - condition: template
-            alias: "Führe benutzerdefinierte Aktion aus"
-            value_template: "{{ 'enable_custom_actions' in include_custom_actions }}"
-        then: !input custom_actions
+            value_template: "{{ trigger.id is not defined or trigger.id == None }}"
+        sequence:
+          - choose:
+              - conditions: !input trigger_conditions
+                sequence:
+                  - alias: "Erstelle persistente Benachrichtigung"
+                    service: persistent_notification.create
+                    data:
+                      title: !input notify_title
+                      message: !input notify_message
+                      notification_id: !input notify_tag
+                  - alias: "Sende eine Benachrichtigung an jedes Gerät"
+                    repeat:
+                      for_each: "{{ notify_devices }}"
+                      sequence:
+                        - variables:
+                            sensor_entity_id: "sensor.{{ device_attr(repeat.item, 'name') | slugify }}_active_notification_count"
+                        - if:
+                            - condition: template
+                              value_template: >
+                                {% set sensor_entity_id = "sensor.{{ device_attr(repeat.item, 'name') | slugify }}_active_notification_count" %}
+                                {% set ns = namespace(notification_exists=false) %}
+
+                                {% if states(sensor_entity_id) != 'unknown' %}
+                                  {% set attributes = states[sensor_entity_id].attributes.items() %}
+                                  {% for key, value in attributes %}
+                                    {% if key.startswith('android.title_io.homeassistant.companion.android_') %}
+                                      {% set idx = key.split('_')[-1] %}
+                                      {% set big_text_key = "android.bigText_io.homeassistant.companion.android_" ~ idx %}
+                                      {% if value == notify_title and state_attr(sensor_entity_id, big_text_key) == notify_message %}
+                                        {% set ns.notification_exists = true %}
+                                      {% endif %}
+                                    {% endif %}
+                                  {% endfor %}
+                                {% endif %}
+
+                                {{ not ns.notification_exists }}
+                          then:
+                            - action: "notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify }}"
+                              data:
+                                title: !input notify_title
+                                message: !input notify_message
+                                data: "{{ device_message_data }}"
+                  - if:
+                      - condition: template
+                        alias: "Führe benutzerdefinierte Aktion aus"
+                        value_template: "{{ 'enable_custom_actions' in include_custom_actions }}"
+                    then: !input custom_actions
+            default: []
