@@ -1,7 +1,7 @@
 blueprint:
   name: Thermostat Benachrichtigung Fehler
   description: "Benachrichtigt, wenn ein Thermostat in einem bestimmten Raum nicht verfügbar ist"
-  source_url: "https://raw.githubusercontent.com/tefracky/homeassistant-blueprints/blueprints/automations/climate_problem.yaml"
+  source_url: "https://raw.githubusercontent.com/tefracky/homeassistant-blueprints/refs/heads/blueprints/automations/climate_problem.yaml"
   domain: automation
   input:
     sensor:

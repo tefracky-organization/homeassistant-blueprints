@@ -1,5 +1,5 @@
 blueprint:
-  source_url: "https://raw.githubusercontent.com/tefracky/homeassistant-blueprints/blueprints/automations/door_sensor_empty.yaml"
+  source_url: "https://raw.githubusercontent.com/tefracky/homeassistant-blueprints/refs/heads/blueprints/automations/door_sensor_empty.yaml"
   name: Türsensor leer
   description: Sendet eine Benachrichtigung, wenn ein Türsensor seit über 3 Tagen nicht geschaltet hat
   domain: automation
