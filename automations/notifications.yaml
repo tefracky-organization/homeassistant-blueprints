@@ -316,6 +316,7 @@ variables:
   notify_message: !input notify_message
   notify_data: !input notify_data
   notify_tag: !input notify_tag
+  send_car: !input send_car
   include_action_buttons: !input include_action_buttons
   action_button_1: !input action_button_1
   action_button_2: !input action_button_2
@@ -338,9 +339,10 @@ variables:
       "170f72bbcf6e90b79e776d8511fc2419"
     ] %}
     {% if send_car %}
-      {% set _ = devices.append("7b4588bc469f471e30087c5757f2ebf4") %}
+      {% set devices = devices + ["7b4588bc469f471e30087c5757f2ebf4"] %}
     {% endif %}
     {{ devices }}
+
 
   device_message_data: >-
     {% set message = namespace(data={}) %}
@@ -442,7 +444,8 @@ action:
       - alias: "Prüfe Trigger-Bedingungen für Hauptbenachrichtigung"
         conditions:
           - condition: template
-            value_template: "{{ trigger.id is not defined or trigger.id == None }}"
+            value_template: "{{ not trigger or trigger.get('id') == None }}"
+            enabled: false
         sequence:
           - choose:
               - conditions: !input trigger_conditions
