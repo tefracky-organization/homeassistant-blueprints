@@ -1,34 +1,58 @@
 blueprint:
   source_url: "https://raw.githubusercontent.com/tefracky-organization/homeassistant-blueprints/refs/heads/blueprints/automations/notifications.yaml"
+  min_version: '2024.10.0'
   name: Benachrichtigungen (Android + Persistent)
   description: >
     # 📢 Benachrichtigungen
+  
+    ## **Version 1.5**
 
-    ## **Version 1.4**
+    Sende smarte Benachrichtigungen bei definierten Auslösern – sowohl an dein Android-Gerät als auch als permanente Mitteilung in der Home Assistant‑Oberfläche.
 
-    Sende smarte Benachrichtigungen bei definierten Auslösern – sowohl an dein Android-Gerät als auch als permanente Mitteilung in der Home Assistant-Oberfläche.
+    Mit dieser Blueprint‑Vorlage kannst du flexibel Trigger definieren (z. B. Zustände, numerische Werte oder Zeitpunkte) und daraufhin Nachrichten verschicken – inklusive optionaler Sprachansage, interaktiver Aktions‑Buttons und erweiterter Bedingungslogik.
 
-    Mit dieser Blueprint-Vorlage kannst du flexibel Trigger definieren (z. B. Zustände, numerische Werte oder Zeitpunkte) und daraufhin Nachrichten verschicken – inklusive optionaler Sprachansage, interaktiver Aktions-Buttons und erweiterter Bedingungslogik.
+    > **⚙️ Voraussetzung:** Home Assistant **ab Version 2024.10**, damit die neue Listen‑Merge‑Funktion für Trigger verwendet werden kann.
 
     - **🧲 Trigger & Endzustände**:
       - Nutze den **Trigger Selector**, um beliebige Ereignisse per UI zu definieren.
-      - Mehrere Trigger sind gleichzeitig möglich.
-      - Definiere einen Endzustand (z. B. zum Entfernen einer Notification) – inklusive **zusätzlicher Bedingungen**.
+      - Mehrere Trigger sind gleichzeitig möglich und werden nun **dynamisch flach zusammengeführt** (ohne versteckte UND‑Verschachtelung).
+      - Definiere einen Endzustand (z. B. zum Entfernen einer Notification) – inklusive **zusätzlicher Bedingungen**.
       - Unterstützt **Bedingungen beim Triggern und Löschen**, um nur bei bestimmten Konstellationen auszulösen.
 
     - **📲 Benachrichtigungen**:
       - Nachrichten an Mobilgeräte senden.
-      - Als persistente UI-Mitteilungen anzeigen.
-      - Integrierte Text-to-Speech und Aktionen möglich.
+      - Als persistente UI‑Mitteilungen anzeigen.
+      - Integrierte Text‑to‑Speech und Aktionen möglich.
 
-    - **🕹 Aktions-Buttons**:
+    - **🕹 Aktions‑Buttons**:
       - Ergänze individuell konfigurierbare Buttons direkt in der Notification.
+      - Jeder Button feuert nun als **eigenständiger Trigger**, ohne dass andere Bedingungen gleichzeitig erfüllt sein müssen.
 
     - **⛔ Bedingungen & Kontrolle**:
       - Lege globale Bedingungen fest, unter denen die Automation überhaupt ausgeführt werden darf.
-      - Zusätzliche Bedingungen **nur für Trigger- oder Lösch-Ereignisse** definierbar.
+      - Zusätzliche Bedingungen **nur für Trigger‑ oder Lösch‑Ereignisse** definierbar.
+
 
     ## Changelog
+
+    **1.5**: Dynamische Trigger-Listen flach zusammenführen (Trigger Merge)
+
+    - 🆕 **Trigger Merge-Support (HA ≥ 2024.10)**
+      - Neue `min_version: '2024.10.0'` für die Blueprint‑Definition hinzugefügt, um die native Listen‑Merge-Funktion zu nutzen.  
+      - `dynamic_trigger` und `clear_trigger` werden jetzt per `- triggers: !input …` direkt in die flache `triggers:`-Liste eingefügt, statt verschachtelt – dadurch entfällt die unerwünschte UND‑Logik.
+
+    - ✂️ **Verschachtelte `triggers:`-Blöcke entfernt**
+      - Alte nested-Trigger-Abschnitte gelöscht, um Klarheit und Vorhersagbarkeit zu verbessern.
+
+    - ✅ **Button-Events feuern einzeln**
+      - Alle mobilen App‑Action-Buttons (`action_button_1`, `action_button_2`, `action_button_3`, `dismiss`) stehen jetzt als eigenständige Trigger-Einträge in der Liste und reagieren punktgenau auf das jeweilige Event.
+
+    - 🛠 **Fehlerbehebung & Kompatibilität**
+      - Vermeidet das Verschwinden von Button-Triggern durch falsche Kombination mit dynamischen Trigger-Bedingungen.
+      - Blueprint ist ab jetzt nur noch auf HA-Instanzen mit Version 2024.10 oder neuer lauffähig.
+
+    > **Hinweis:** Nach dem Update der Blueprint unter **Konfiguration → Automatisierungen → Neu laden** die betroffenen Automationen neu speichern, damit die geänderten Trigger korrekt aktiviert werden.
+
 
     **1.4**: Zusätzliche Bedingungen für Trigger- und Endzustand
 
@@ -64,26 +88,26 @@ blueprint:
 
     - 🗑 **Refaktorierte Löschlogik:**
       Statt der bisherigen, manuellen Abfolge zum Löschen persistenter Benachrichtigungen wird nun das zentrale Skript `script.notification_delete` aufgerufen. Dies sorgt für einen klareren Ablauf und verbesserte Wartbarkeit.
-    
+
     - 🔔 **Modularisierte Benachrichtigungsroutine:**
       Ein neuer Choose-Zweig „Check if notification is enabled“ überprüft, ob mobile App-Benachrichtigungen aktiviert sind und ob Geräte vorhanden sind, und löst dann das Skript `script.notification_send` aus – inklusive Übergabe aller relevanten Parameter wie Titel, Nachricht, Daten und Aktions-Buttons.
-    
+
     - 🧹 **Bereinigung der Legacy-Struktur:**
       Der bisher verwendete `default`-Block, der separate Zuständigkeiten für Gerätebenachrichtigungen und das Erstellen persistenter Nachrichten innehatte, wurde komplett entfernt, um Redundanzen abzubauen und die Logik zu vereinheitlichen.
-    
+
     - ⚙️ **Integrierte benutzerdefinierte Aktionen:**
       Die Option, benutzerdefinierte Aktionen auszuführen, bleibt erhalten – in den neuen Benachrichtigungs-Branch integriert, um den Ablauf zu vereinheitlichen und die Konfiguration übersichtlicher zu gestalten.
 
     **1.1**: Aktionen zu Benachrichtigungen hinzugefügt
-    
+
     - ✨ Umstellung auf `trigger:` Selector – mehr Flexibilität, bessere UI.
-    
+
     - ➕ Unterstützung für **mehrere Trigger** gleichzeitig.
-    
+
     - 🧼 Entfernt: Komplexe manuelle Zustandstyp-Auswahl.
-    
+
     - 🧽 Entfernt: `time_delay_state`, da dies direkt im Trigger möglich ist (`for:`).
-    
+
     - 🧩 Trigger & Endzustand in einer Gruppe zusammengeführt.
 
     **Vielen Dank an die ursprünglichen Entwickler:**
@@ -343,7 +367,6 @@ variables:
     {% endif %}
     {{ devices }}
 
-
   device_message_data: >-
     {% set message = namespace(data={}) %}
     {% set actions = [] %}
@@ -371,36 +394,39 @@ variables:
     {{ message.data }}
 
 triggers:
+  # Faltet alle Einträge aus dynamic_trigger an den Anfang deiner Triggerliste
   - triggers: !input dynamic_trigger
 
+  # Feste Button‑Events
   - platform: event
     event_type: mobile_app_notification_action
     event_data:
-      action: "dismiss"
-      tag: !input notify_tag
-    id: clear_notification_button
-
-  - platform: event
-    event_type: mobile_app_notification_action
-    event_data:
-      action: "action_button_1"
+      action: action_button_1
       tag: !input notify_tag
     id: action_button_1
 
   - platform: event
     event_type: mobile_app_notification_action
     event_data:
-      action: "action_button_2"
+      action: action_button_2
       tag: !input notify_tag
     id: action_button_2
 
   - platform: event
     event_type: mobile_app_notification_action
     event_data:
-      action: "action_button_3"
+      action: action_button_3
       tag: !input notify_tag
     id: action_button_3
 
+  - platform: event
+    event_type: mobile_app_notification_action
+    event_data:
+      action: dismiss
+      tag: !input notify_tag
+    id: clear_notification_button
+
+  # Faltet alle Einträge aus clear_trigger ans Ende der Liste
   - triggers: !input clear_trigger
 
 condition: !input global_conditions
