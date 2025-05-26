@@ -1,10 +1,23 @@
 blueprint:
   source_url: "https://raw.githubusercontent.com/tefracky-organization/homeassistant-blueprints/refs/heads/blueprints/automations/notifications.yaml"
-  min_version: '2024.10.0'
   name: Benachrichtigungen (Android + Persistent)
   description: >
     # 📢 Benachrichtigungen
-  
+
+    ## **Version 1.6**
+
+    - 🔄 **Auto-Flag umbenannt und Default geändert**  
+      `send_car` heißt jetzt `send_to_car` (Standard: false) und sendet nur noch an das Gerät  
+      7b4588bc469f471e30087c5757f2ebf4 (EOS), wenn aktiviert.
+
+    - ➕ **Neue Arbeits-Benachrichtigung**  
+      `send_to_work` (Standard: false) ermöglicht nun das Hinzufügen der Arbeitsgeräte  
+      e0f19df8be795d8d5867ccf822025697 (Oliver Handy Arbeit) und  
+      170f72bbcf6e90b79e776d8511fc2419 (Tina Tablet Arbeit).
+
+    - 🛠 **Notify-Devices-Logik aufgeteilt**  
+      Basis-Liste enthält nur Privatgeräte. Arbeits- und Auto-Geräte werden nun getrennt nach ihren Flags hinzugefügt.
+
     ## **Version 1.5**
 
     Sende smarte Benachrichtigungen bei definierten Auslösern – sowohl an dein Android-Gerät als auch als permanente Mitteilung in der Home Assistant‑Oberfläche.
@@ -185,12 +198,19 @@ blueprint:
           default: "default_channel"
           selector:
             text:
-        send_car:
+        send_to_car:
           name: "Auto-Benachrichtigung aktivieren"
           description: >
-            Wenn aktiviert (Standard: true) wird das Gerät 
-            7b4588bc469f471e30087c5757f2ebf4 (Auto) in die Benachrichtigungsliste aufgenommen.
-          default: true
+            Wenn aktiviert (Standard: false) wird das Gerät 
+            7b4588bc469f471e30087c5757f2ebf4 (EOS) in die Benachrichtigungsliste aufgenommen.
+          default: false
+          selector:
+            boolean:
+        send_to_work:
+          name: "Arbeits-Benachrichtigung aktivieren"
+          description: >
+            Wenn aktiviert (Standard: false) werden die Geräte e0f19df8be795d8d5867ccf822025697 (Oliver Handy Arbeit) und 170f72bbcf6e90b79e776d8511fc2419 (Tina Tablet Arbeit) in die Benachrichtigungsliste aufgenommen.
+          default: false
           selector:
             boolean:
     action_settings:
@@ -340,7 +360,8 @@ variables:
   notify_message: !input notify_message
   notify_data: !input notify_data
   notify_tag: !input notify_tag
-  send_car: !input send_car
+  send_to_car: !input send_to_car
+  send_to_work: !input send_to_work
   include_action_buttons: !input include_action_buttons
   action_button_1: !input action_button_1
   action_button_2: !input action_button_2
@@ -357,15 +378,24 @@ variables:
 
   notify_devices: >-
     {% set devices = [
-      "30d663ef8b06c87a5bdb80a56af74b15",
-      "e0f19df8be795d8d5867ccf822025697",
-      "0cfbf22f9dc76ecf11f78017669b1d51",
-      "170f72bbcf6e90b79e776d8511fc2419"
+      '30d663ef8b06c87a5bdb80a56af74b15',
+      '0cfbf22f9dc76ecf11f78017669b1d51'
     ] %}
-    {% if send_car %}
-      {% set devices = devices + ["7b4588bc469f471e30087c5757f2ebf4"] %}
+    {% if send_to_work %}
+      {{ devices + [
+      'e0f19df8be795d8d5867ccf822025697',
+      '170f72bbcf6e90b79e776d8511fc2419'
+      ] }}
+    {% else %}
+      {{ devices }}
     {% endif %}
-    {{ devices }}
+    {#
+    {% if send_to_car %}
+      {{ devices + ['7b4588bc469f471e30087c5757f2ebf4'] }}
+    {% else %}
+      {{ devices }}
+    {% endif %}
+    #}
 
   device_message_data: >-
     {% set message = namespace(data={}) %}
