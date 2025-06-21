@@ -4,8 +4,8 @@ blueprint:
   description: >
     🧹 **Staubsauger-Zeitplan mit Benachrichtigungssteuerung**
 
-    Diese Automation verwendet die [Scheduler-Komponente von nielsfaber](https://github.com/nielsfaber/scheduler-component), 
-    um Reinigungszeitpläne für deinen Staubsauger zu verwalten. Statt automatisch zu starten, erhältst du 
+    Diese Automation verwendet die [Scheduler-Komponente von nielsfaber](https://github.com/nielsfaber/scheduler-component),
+    um Reinigungszeitpläne für deinen Staubsauger zu verwalten. Statt automatisch zu starten, erhältst du
     eine smarte Push-Benachrichtigung, mit der du selbst entscheiden kannst, wann die Reinigung beginnt.
 
 
@@ -100,37 +100,10 @@ triggers:
     entity_id: !input trigger_button
     id: schedule_start
 
-  - alias: "Benachrichtigungsaktion: 'Start' empfangen"
+  - alias: "Benachrichtigungsaktion empfangen"
     trigger: event
     event_type: mobile_app_notification_action
-    event_data:
-      action: "start"
-      tag: !input notify_tag
-    id: action_start
-
-  - alias: "Benachrichtigungsaktion: 'Dock' empfangen"
-    trigger: event
-    event_type: mobile_app_notification_action
-    event_data:
-      action: "dock"
-      tag: !input notify_tag
-    id: action_dock
-
-  - alias: "Benachrichtigungsaktion: 'Pause' empfangen"
-    trigger: event
-    event_type: mobile_app_notification_action
-    event_data:
-      action: "pause"
-      tag: !input notify_tag
-    id: action_pause
-
-  - alias: "Benachrichtigungsaktion: 'Stop' empfangen"
-    trigger: event
-    event_type: mobile_app_notification_action
-    event_data:
-      action: "stop"
-      tag: !input notify_tag
-    id: action_stop
+    id: action
 
   - alias: "Staubsaugerstatus: an der Ladestation angedockt"
     trigger: state
@@ -176,7 +149,7 @@ action:
             data:
               fan_speed: "{{ suction_mode }}"
             alias: "Saugkraft setzen"
-          - service: script.notification_send_without_action
+          - service: script.notification_send
             data:
               notify_title: "{{ vacuum_friendly_name }} einsatzbereit"
               notify_message: >
@@ -189,44 +162,53 @@ action:
               send_car: false
               action_button_delete: "Löschen"
               additional_message_actions:
-                - action: "start"
+                - action: "{{ notify_tag + '_action_tag_separator_' + 'start' }}"
                   title: "Start"
             alias: "Benachrichtigung 'Bereit' senden"
       - conditions:
           - condition: trigger
-            id: action_start
+            id: action
+          - condition: template
+            value_template: "{{ notify_tag in trigger.event.data.action }}"
         sequence:
-          - service: vacuum.start
-            target:
-              entity_id: "{{ vacuum_entity_id }}"
-            alias: "Staubsauger starten"
-      - conditions:
-          - condition: trigger
-            id: action_dock
-        sequence:
-          - service: vacuum.return_to_base
-            target:
-              entity_id: "{{ vacuum_entity_id }}"
-            alias: "Staubsauger zur Ladestation schicken"
-      - conditions:
-          - condition: trigger
-            id: action_pause
-        sequence:
-          - service: vacuum.pause
-            target:
-              entity_id: "{{ vacuum_entity_id }}"
-      - conditions:
-          - condition: trigger
-            id: action_stop
-        sequence:
-          - service: vacuum.stop
-            target:
-              entity_id: "{{ vacuum_entity_id }}"
+          - variables:
+              tag: "{{ trigger.event.data.action.split('_action_tag_separator_')[1] }}"
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ tag == 'start' }}"
+                sequence:
+                  - service: vacuum.start
+                    target:
+                      entity_id: "{{ vacuum_entity_id }}"
+                    alias: "Staubsauger starten"
+              - conditions:
+                  - condition: template
+                    value_template: "{{ tag == 'dock' }}"
+                sequence:
+                  - service: vacuum.return_to_base
+                    target:
+                      entity_id: "{{ vacuum_entity_id }}"
+                    alias: "Staubsauger zur Ladestation schicken"
+              - conditions:
+                  - condition: template
+                    value_template: "{{ tag == 'pause' }}"
+                sequence:
+                  - service: vacuum.pause
+                    target:
+                      entity_id: "{{ vacuum_entity_id }}"
+              - conditions:
+                  - condition: template
+                    value_template: "{{ tag == 'stop' }}"
+                sequence:
+                  - service: vacuum.stop
+                    target:
+                      entity_id: "{{ vacuum_entity_id }}"
       - conditions:
           - condition: trigger
             id: vacuum_started
         sequence:
-          - service: script.notification_send_without_action
+          - service: script.notification_send
             data:
               notify_title: "{{ vacuum_friendly_name }} reinigt"
               notify_message: "Der Saugroboter reinigt jetzt im Modus '{{ suction_mode_name }}'."
@@ -237,18 +219,18 @@ action:
               send_car: false
               action_button_delete: "Löschen"
               additional_message_actions:
-                - action: "pause"
+                - action: "{{ notify_tag + '_action_tag_separator_' + 'pause' }}"
                   title: "Pause"
-                - action: "stop"
+                - action: "{{ notify_tag + '_action_tag_separator_' + 'stop' }}"
                   title: "Stop"
-                - action: "dock"
+                - action: "{{ notify_tag + '_action_tag_separator_' + 'dock' }}"
                   title: "Dock"
             alias: "Benachrichtigung 'Reinigung gestartet' senden"
       - conditions:
             - condition: trigger
               id: vacuum_paused
         sequence:
-          - service: script.notification_send_without_action
+          - service: script.notification_send
             data:
               notify_title: "{{ vacuum_friendly_name }} pausiert"
               notify_message: "Der Saugroboter ist pausiert."
@@ -259,16 +241,16 @@ action:
               send_car: false
               action_button_delete: "Löschen"
               additional_message_actions:
-                - action: "start"
+                - action: "{{ notify_tag + '_action_tag_separator_' + 'start' }}"
                   title: "Fortsetzen"
-                - action: "dock"
+                - action: "{{ notify_tag + '_action_tag_separator_' + 'dock' }}"
                   title: "Dock"
             alias: "Benachrichtigung 'Pausiert (paused)' senden"
       - conditions:
             - condition: trigger
               id: vacuum_paused
         sequence:
-          - service: script.notification_send_without_action
+          - service: script.notification_send
             data:
               notify_title: "{{ vacuum_friendly_name }} gestoppt"
               notify_message: "Der Saugroboter ist inaktiv."
@@ -279,16 +261,16 @@ action:
               send_car: false
               action_button_delete: "Löschen"
               additional_message_actions:
-                - action: "start"
+                - action: "{{ notify_tag + '_action_tag_separator_' + 'start' }}"
                   title: "Start"
-                - action: "dock"
+                - action: "{{ notify_tag + '_action_tag_separator_' + 'dock' }}"
                   title: "Dock"
             alias: "Benachrichtigung 'Gestoppt (idle)' senden"
       - conditions:
           - condition: trigger
             id: vacuum_returning
         sequence:
-          - service: script.notification_send_without_action
+          - service: script.notification_send
             data:
               notify_title: "{{ vacuum_friendly_name }} kehrt zur Ladestation zurück"
               notify_message: "Der Saugroboter ist auf dem Rückweg."
@@ -299,7 +281,7 @@ action:
               send_car: false
               action_button_delete: "Löschen"
               additional_message_actions:
-                - action: "pause"
+                - action: "{{ notify_tag + '_action_tag_separator_' + 'pause' }}"
                   title: "Pause"
             alias: "Benachrichtigung 'Rückkehr' senden"
   - choose:
