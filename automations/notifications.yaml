@@ -4,6 +4,12 @@ blueprint:
   description: >
     # 📢 Benachrichtigungen
 
+    ## **Version 1.7**
+
+    - 🛠 **iOS-Handling optimiert**
+      - Kleinere Anpassungen bei Variablen und Actions zur Angleichung an neue Struktur, bei der kein tag für die Actions benötigt wird.
+      - Durch diese Änderungen werden die Actions auch kompatibel zu iOS-Geräten, die keine Tags beim Klick auf eine Aktion übertragen.
+
     ## **Version 1.6**
 
     - 🔄 **Auto-Flag umbenannt und Default geändert**  
@@ -406,17 +412,17 @@ variables:
     {% set message.data = dict(message.data, **{ 'channel': notify_tag }) %}
     {% set message.data = dict(message.data, **{ 'tag': notify_tag }) %}
     {% if 'enable_action_button_1' in include_action_buttons %}
-      {% set actions = actions + [{ 'action': 'action_button_1', 'title': action_button_1 }] %}
+      {% set actions = actions + [{ 'action': 'action_button_1' + '_action_tag_separator_' + notify_tag, 'title': action_button_1 }] %}
     {% endif %}
     {% if 'enable_action_button_2' in include_action_buttons %}
-      {% set actions = actions + [{ 'action': 'action_button_2', 'title': action_button_2 }] %}
+      {% set actions = actions + [{ 'action': 'action_button_2' + '_action_tag_separator_' + notify_tag, 'title': action_button_2 }] %}
     {% endif %}
     {% if 'enable_action_button_3' in include_action_buttons %}
-      {% set actions = actions + [{ 'action': 'action_button_3', 'title': action_button_3 }] %}
+      {% set actions = actions + [{ 'action': 'action_button_3' + '_action_tag_separator_' + notify_tag, 'title': action_button_3 }] %}
     {% endif %}
     {% if 'sticky' in notify_data %}
       {% set message.data = dict(message.data, **{ 'sticky': "true" }) %}
-      {% set actions = actions + [{ 'action': 'dismiss', 'title': action_button_delete }] %}
+      {% set actions = actions + [{ 'action': 'dismiss' +  '_action_tag_separator_' + notify_tag, 'title': action_button_delete }] %}
     {% endif %}
     {% if actions | length > 0 %}
       {% set message.data = dict(message.data, **{ 'actions': actions }) %}
@@ -430,31 +436,7 @@ triggers:
   # Feste Button‑Events
   - platform: event
     event_type: mobile_app_notification_action
-    event_data:
-      action: action_button_1
-      tag: !input notify_tag
-    id: action_button_1
-
-  - platform: event
-    event_type: mobile_app_notification_action
-    event_data:
-      action: action_button_2
-      tag: !input notify_tag
-    id: action_button_2
-
-  - platform: event
-    event_type: mobile_app_notification_action
-    event_data:
-      action: action_button_3
-      tag: !input notify_tag
-    id: action_button_3
-
-  - platform: event
-    event_type: mobile_app_notification_action
-    event_data:
-      action: dismiss
-      tag: !input notify_tag
-    id: clear_notification_button
+    id: action_button
 
   # Faltet alle Einträge aus clear_trigger ans Ende der Liste
   - triggers: !input clear_trigger
@@ -463,40 +445,48 @@ condition: !input global_conditions
 
 action:
   - choose:
-      - alias: "Prüfe, ob Aktions-Button 1 gedrückt wurde"
+      - alias: "Prüfe, ob Aktions-Button gedrückt wurde"
         conditions:
           - condition: trigger
-            id: action_button_1
-        sequence: !input action_1
-      - alias: "Prüfe, ob Aktions-Button 2 gedrückt wurde"
-        conditions:
-          - condition: trigger
-            id: action_button_2
-        sequence: !input action_2
-      - alias: "Prüfe, ob Aktions-Button 3 gedrückt wurde"
-        conditions:
-          - condition: trigger
-            id: action_button_3
-        sequence: !input action_3
-      - alias: "Prüfe, ob Löschen-Schaltfläche gedrückt oder Endzustand erreicht wurde (Lösch-Trigger)"
-        conditions:
-          - condition: or
-            conditions:
-              - condition: trigger
-                id: clear_notification_button
-              - condition: trigger
-                id: clear_notification_trigger
-        sequence:
+            id: action_button
+        sequence:        
+          - variables:
+              action: "{{ trigger.event.data.action.split('_action_tag_separator_')[0] }}"
+              tag: "{{ trigger.event.data.action.split('_action_tag_separator_')[1] }}"
+          - condition: template
+            value_template: "{{ tag == notify_tag }}"
           - choose:
-              - conditions: !input clear_conditions
+              - alias: "Prüfe, ob Aktions-Button 1 gedrückt wurde"
+                conditions:
+                  - condition: template
+                    value_template: "{{ action == 'action_button_1' }}"
+                sequence: !input action_1
+              - alias: "Prüfe, ob Aktions-Button 2 gedrückt wurde"
+                conditions:
+                  - condition: template
+                    value_template: "{{ action == 'action_button_2' }}"
+                sequence: !input action_2
+              - alias: "Prüfe, ob Aktions-Button 3 gedrückt wurde"
+                conditions:
+                  - condition: template
+                    value_template: "{{ action == 'action_button_3' }}"
+                sequence: !input action_3
+              - alias: "Prüfe, ob Löschen-Schaltfläche gedrückt wurde"
+                conditions:
+                  - condition: template
+                    value_template: "{{ action == 'dismiss' }}"
                 sequence:
                   - action: script.notification_delete
                     data:
                       notify_tag: "{{ notify_tag }}"
-            default:
-              - action: script.notification_delete
-                data:
-                  notify_tag: "{{ notify_tag }}"
+      - alias: "Prüfe, ob Endzustand erreicht wurde (Lösch-Trigger)"
+        conditions:
+          - condition: trigger
+            id: clear_notification_trigger
+        sequence:
+          - action: script.notification_delete
+            data:
+              notify_tag: "{{ notify_tag }}"
       - alias: "Prüfe Trigger-Bedingungen für Hauptbenachrichtigung"
         conditions:
           - condition: template
