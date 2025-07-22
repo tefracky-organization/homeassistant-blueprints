@@ -2,24 +2,26 @@ blueprint:
   source_url: "https://raw.githubusercontent.com/tefracky-organization/homeassistant-blueprints/blueprints/automations/vacuum.yaml"
   name: Staubsauger-Zeitplan mit Benachrichtigungssteuerung
   description: >
-    🧹 **Staubsauger-Zeitplan mit Benachrichtigungssteuerung**
+    🧹 **Staubsauger-Zeitplan mit Benachrichtigungssteuerung & Urlaubsmodus**
 
     Diese Automation verwendet die [Scheduler-Komponente von nielsfaber](https://github.com/nielsfaber/scheduler-component),
-    um Reinigungszeitpläne für deinen Staubsauger zu verwalten. Statt automatisch zu starten, erhältst du
-    eine smarte Push-Benachrichtigung, mit der du selbst entscheiden kannst, wann die Reinigung beginnt.
+    um Reinigungszeitpläne für deinen Staubsauger zu verwalten. Sie bietet zwei Betriebsmodi:
 
+    1.  **Normalbetrieb:** Statt automatisch zu starten, erhältst du eine smarte Push-Benachrichtigung,
+        mit der du selbst entscheidest, wann die Reinigung beginnt.
+    2.  **Urlaubsmodus:** Wenn ein von dir definierter Schalter (input_boolean) aktiviert ist,
+        startet der Staubsauger zum geplanten Zeitpunkt **sofort und ohne Nachfrage**.
 
     📅 **Zeitplan & Modus:**
 
     - Die Reinigungszeiten werden über Zeitpläne in der `scheduler-card` festgelegt.
     - Der gewünschte Reinigungsmodus (`quiet`, `balanced`, `turbo`, `max`) wird direkt aus dem Namen des Buttons abgeleitet.
 
-
-    📲 **Benachrichtigungssteuerung:**
+    📲 **Benachrichtigungssteuerung (im Normalbetrieb):**
 
     - Wenn ein Zeitplan ausgelöst wird, erhältst du eine Push-Nachricht mit den Optionen:
       - ✅ **Start** – startet den Staubsauger mit dem gewünschten Modus
-      - ❌ **Abbrechen (Dock)** – bricht den Vorgang ab
+      - ❌ **Abbrechen** – bricht den Vorgang ab
     - Während der Reinigung kannst du:
       - ⏸ **Pausieren**
       - 🛑 **Stoppen**
@@ -31,13 +33,9 @@ blueprint:
 
     - [Scheduler-Integration](https://github.com/nielsfaber/scheduler-component) (HACS)
     - [Scheduler-Card](https://github.com/nielsfaber/scheduler-card) (HACS - optional, aber empfohlen)
+    - Ein `input_boolean` als Schalter für den Urlaubsmodus.
     - Zeitplan mit `input_button`, in dessen Name der Reinigungsmodus steckt (z. B. `input_button.vacuum_downstairs_start_turbo`)
-    - Staubsauger mit Unterstützung für `fan_speed` (z. B. Roborock S7)
-
-
-    📌 **Hinweis:**
-
-    - Der Staubsauger wird niemals automatisch gestartet. Du entscheidest über die Benachrichtigung, ob und wann die Reinigung beginnt.
+    - Staubsauger mit Unterstützung für `fan_speed` (z. B. Roborock)
 
 
     🔗 **Credits:**
@@ -100,10 +98,15 @@ triggers:
     entity_id: !input trigger_button
     id: schedule_start
 
-  - alias: "Benachrichtigungsaktion empfangen"
+  - alias: "Benachrichtigungsaktion empfangen App"
     trigger: event
     event_type: mobile_app_notification_action
-    id: action
+    id: action_app
+
+  - alias: "Benachrichtigungsaktion empfangen Telegram"
+    trigger: event
+    event_type: telegram_callback
+    id: action_telegram
 
   - alias: "Staubsaugerstatus: an der Ladestation angedockt"
     trigger: state
@@ -139,44 +142,71 @@ conditions: []
 
 action:
   - choose:
-      - conditions:
+      - alias: "AKTION 1: Zeitplan wurde ausgelöst"
+        conditions:
           - condition: trigger
             id: schedule_start
         sequence:
-          - action: vacuum.set_fan_speed
+          - alias: "Schritt 1: Saugkraft immer setzen, egal ob Urlaubsmodus oder nicht."
+            action: vacuum.set_fan_speed
             target:
               entity_id: "{{ vacuum_entity_id }}"
             data:
               fan_speed: "{{ suction_mode }}"
             alias: "Saugkraft setzen"
-          - service: script.notification_send
-            data:
-              notify_title: "{{ vacuum_friendly_name }} einsatzbereit"
-              notify_message: >
-                Der Zeitplan wurde ausgelöst. Saugmodus: '{{ suction_mode_name }}'.
-                Tippe auf 'Start', um zu beginnen, oder 'Löschen', um abzubrechen.
-              notify_tag: "{{ notify_tag }}"
-              notify_data:
-                - high_priority
-                - sticky
-              send_car: false
-              action_button_delete: "Löschen"
-              additional_message_actions:
-                - action: "{{ notify_tag + '_action_tag_separator_' + 'start' }}"
-                  title: "Start"
-            alias: "Benachrichtigung 'Bereit' senden"
-      - conditions:
+          - alias: "Schritt 2: Prüfen, ob der Urlaubsmodus an ist."
+            choose:
+              - alias: "FALL 1.1: Urlaubsmodus ist AN - er Staubsauger startet sofort ohne Nachfrage."
+                conditions:
+                  - condition: state
+                    entity_id: input_boolean.vacation
+                    state: 'on'
+                sequence:
+                  - service: vacuum.start
+                    target:
+                      entity_id: "{{ vacuum_entity_id }}"
+                    alias: "Staubsauger im Urlaubsmodus direkt starten"
+            default:
+              - alias: "FALL 1.2: Urlaubsmodus ist AUS (Standard) - Eine Benachrichtigung wird gesendet, um den Start zu bestätigen."
+                service: script.notification_send
+                data:
+                  notify_title: "{{ vacuum_friendly_name }} einsatzbereit"
+                  notify_message: >
+                    Der Zeitplan wurde ausgelöst. Saugmodus: '{{ suction_mode_name }}'.
+                    Tippe auf 'Start', um zu beginnen, oder 'Löschen', um abzubrechen.
+                  notify_tag: "{{ notify_tag }}"
+                  notify_data:
+                    - high_priority
+                    - sticky
+                  send_car: false
+                  action_button_delete: "Löschen"
+                  additional_message_actions:
+                    - action: "{{ 'start' + states('input_text.notification_action_tag_separator') + notify_tag }}"
+                      title: "Start"
+                alias: "Benachrichtigung 'Bereit' senden"
+
+      - alias: "AKTION 2: Auf eine Benachrichtigungsaktion reagieren"
+        conditions:
           - condition: trigger
-            id: action
-          - condition: template
-            value_template: "{{ notify_tag in trigger.event.data.action }}"
+            id:
+              - action_app
+              - action_telegram
         sequence:
+          - alias: "Unterskript aufrufen und action/tag zurückgeben"
+            service: script.benachrichtigung_event_daten_auslesen
+            data:
+              event_data: "{{ trigger.event.data }}"
+            response_variable: result
           - variables:
-              tag: "{{ trigger.event.data.action.split('_action_tag_separator_')[1] }}"
+              action: "{{ result.action }}"
+              tag: "{{ result.tag }}"
+          - condition: template
+            value_template: "{{ notify_tag == tag }}"
+            alias: "Prüfen, ob der Tag zur Automation passt"
           - choose:
               - conditions:
                   - condition: template
-                    value_template: "{{ tag == 'start' }}"
+                    value_template: "{{ action == 'start' }}"
                 sequence:
                   - service: vacuum.start
                     target:
@@ -184,7 +214,7 @@ action:
                     alias: "Staubsauger starten"
               - conditions:
                   - condition: template
-                    value_template: "{{ tag == 'dock' }}"
+                    value_template: "{{ action == 'dock' }}"
                 sequence:
                   - service: vacuum.return_to_base
                     target:
@@ -192,19 +222,20 @@ action:
                     alias: "Staubsauger zur Ladestation schicken"
               - conditions:
                   - condition: template
-                    value_template: "{{ tag == 'pause' }}"
+                    value_template: "{{ action == 'pause' }}"
                 sequence:
                   - service: vacuum.pause
                     target:
                       entity_id: "{{ vacuum_entity_id }}"
               - conditions:
                   - condition: template
-                    value_template: "{{ tag == 'stop' }}"
+                    value_template: "{{ action == 'stop' }}"
                 sequence:
                   - service: vacuum.stop
                     target:
                       entity_id: "{{ vacuum_entity_id }}"
-      - conditions:
+      - alias: "AKTION 3: Reinigung wurde gestartet"
+        conditions:
           - condition: trigger
             id: vacuum_started
         sequence:
@@ -219,16 +250,17 @@ action:
               send_car: false
               action_button_delete: "Löschen"
               additional_message_actions:
-                - action: "{{ notify_tag + '_action_tag_separator_' + 'pause' }}"
+                - action: "{{ 'pause' + states('input_text.notification_action_tag_separator') + notify_tag }}"
                   title: "Pause"
-                - action: "{{ notify_tag + '_action_tag_separator_' + 'stop' }}"
+                - action: "{{ 'stop' + states('input_text.notification_action_tag_separator') + notify_tag }}"
                   title: "Stop"
-                - action: "{{ notify_tag + '_action_tag_separator_' + 'dock' }}"
+                - action: "{{ 'dock' + states('input_text.notification_action_tag_separator') + notify_tag }}"
                   title: "Dock"
             alias: "Benachrichtigung 'Reinigung gestartet' senden"
-      - conditions:
-            - condition: trigger
-              id: vacuum_paused
+      - alias: "AKTION 4: Reinigung wurde pausiert"
+        conditions:
+          - condition: trigger
+            id: vacuum_paused
         sequence:
           - service: script.notification_send
             data:
@@ -241,14 +273,15 @@ action:
               send_car: false
               action_button_delete: "Löschen"
               additional_message_actions:
-                - action: "{{ notify_tag + '_action_tag_separator_' + 'start' }}"
+                - action: "{{ 'start' + states('input_text.notification_action_tag_separator') + notify_tag }}"
                   title: "Fortsetzen"
-                - action: "{{ notify_tag + '_action_tag_separator_' + 'dock' }}"
+                - action: "{{ 'dock' + states('input_text.notification_action_tag_separator') + notify_tag }}"
                   title: "Dock"
             alias: "Benachrichtigung 'Pausiert (paused)' senden"
-      - conditions:
-            - condition: trigger
-              id: vacuum_paused
+      - alias: "AKTION 5: Reinigung ist inaktiv/gestoppt"
+        conditions:
+          - condition: trigger
+            id: vacuum_idle # Korrigiert von vacuum_paused
         sequence:
           - service: script.notification_send
             data:
@@ -261,12 +294,13 @@ action:
               send_car: false
               action_button_delete: "Löschen"
               additional_message_actions:
-                - action: "{{ notify_tag + '_action_tag_separator_' + 'start' }}"
+                - action: "{{ 'start' + states('input_text.notification_action_tag_separator') + notify_tag }}"
                   title: "Start"
-                - action: "{{ notify_tag + '_action_tag_separator_' + 'dock' }}"
+                - action: "{{ 'dock' + states('input_text.notification_action_tag_separator') + notify_tag }}"
                   title: "Dock"
             alias: "Benachrichtigung 'Gestoppt (idle)' senden"
-      - conditions:
+      - alias: "AKTION 6: Staubsauger kehrt zur Basis zurück"
+        conditions:
           - condition: trigger
             id: vacuum_returning
         sequence:
@@ -281,11 +315,11 @@ action:
               send_car: false
               action_button_delete: "Löschen"
               additional_message_actions:
-                - action: "{{ notify_tag + '_action_tag_separator_' + 'pause' }}"
+                - action: "{{ 'pause' + states('input_text.notification_action_tag_separator') + notify_tag }}"
                   title: "Pause"
             alias: "Benachrichtigung 'Rückkehr' senden"
-  - choose:
-      - conditions:
+      - alias: "AKTION 7: Staubsauger ist angedockt"
+        conditions:
           - condition: trigger
             id: vacuum_docked
         sequence:
