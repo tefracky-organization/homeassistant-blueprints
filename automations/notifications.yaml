@@ -4,6 +4,13 @@ blueprint:
   description: >
     # 📢 Benachrichtigungen
 
+    ## **Version 1.9**
+
+    - 📞 **Telegram-Integration für Aktionen** Die Automation unterstützt nun Callback-Queries von Telegram. Interaktive Buttons in Telegram-Nachrichten können jetzt ebenfalls Aktionen auslösen, genau wie bei den mobilen App-Benachrichtigungen. Hierfür wurde ein neuer Trigger für `telegram_callback` hinzugefügt.
+    - 📦 **Zentralisierte Event-Verarbeitung** Die Logik zum Auslesen der Aktions- und Tag-Daten aus den Events (`mobile_app_notification_action` und `telegram_callback`) wurde in ein zentrales Skript `script.benachrichtigung_event_daten_auslesen` ausgelagert. Dies vereinfacht die Wartung und macht die Automation übersichtlicher.
+    - ⚙️ **Dynamischer Action-Separator** Der bisher fest codierte Trenner `_action_tag_separator_` wurde durch einen dynamischen Wert aus `input_text.notification_action_tag_separator` ersetzt. Dies erhöht die Flexibilität und Standardisierung bei der Erstellung von Action-Strings.
+
+
     ## **Version 1.8**
 
     - 🚀 **Zentralisierung des Benachrichtigungsversands**  
@@ -422,17 +429,17 @@ variables:
     {% set message.data = dict(message.data, **{ 'channel': notify_tag }) %}
     {% set message.data = dict(message.data, **{ 'tag': notify_tag }) %}
     {% if 'enable_action_button_1' in include_action_buttons %}
-      {% set actions = actions + [{ 'action': 'action_button_1' + '_action_tag_separator_' + notify_tag, 'title': action_button_1 }] %}
+      {% set actions = actions + [{ 'action': 'action_button_1' + states('input_text.notification_action_tag_separator') + notify_tag, 'title': action_button_1 }] %}
     {% endif %}
     {% if 'enable_action_button_2' in include_action_buttons %}
-      {% set actions = actions + [{ 'action': 'action_button_2' + '_action_tag_separator_' + notify_tag, 'title': action_button_2 }] %}
+      {% set actions = actions + [{ 'action': 'action_button_2' + states('input_text.notification_action_tag_separator') + notify_tag, 'title': action_button_2 }] %}
     {% endif %}
     {% if 'enable_action_button_3' in include_action_buttons %}
-      {% set actions = actions + [{ 'action': 'action_button_3' + '_action_tag_separator_' + notify_tag, 'title': action_button_3 }] %}
+      {% set actions = actions + [{ 'action': 'action_button_3' + states('input_text.notification_action_tag_separator') + notify_tag, 'title': action_button_3 }] %}
     {% endif %}
     {% if 'sticky' in notify_data %}
       {% set message.data = dict(message.data, **{ 'sticky': "true" }) %}
-      {% set actions = actions + [{ 'action': 'dismiss' +  '_action_tag_separator_' + notify_tag, 'title': action_button_delete }] %}
+      {% set actions = actions + [{ 'action': 'dismiss' +  states('input_text.notification_action_tag_separator') + notify_tag, 'title': action_button_delete }] %}
     {% endif %}
     {% if actions | length > 0 %}
       {% set message.data = dict(message.data, **{ 'actions': actions }) %}
@@ -446,7 +453,10 @@ triggers:
   # Feste Button‑Events
   - platform: event
     event_type: mobile_app_notification_action
-    id: action_button
+    id: action_button_app
+  - trigger: event
+    event_type: telegram_callback
+    id: action_button_telegram
 
   # Faltet alle Einträge aus clear_trigger ans Ende der Liste
   - triggers: !input clear_trigger
@@ -458,11 +468,18 @@ action:
       - alias: "Prüfe, ob Aktions-Button gedrückt wurde"
         conditions:
           - condition: trigger
-            id: action_button
-        sequence:        
+            id:
+              - action_button_app
+              - action_button_telegram
+        sequence:
+          - alias: "Unterskript aufrufen und action/tag zurückgeben"
+            service: script.benachrichtigung_event_daten_auslesen
+            data:
+              event_data: "{{ trigger.event.data }}"
+            response_variable: result
           - variables:
-              action: "{{ trigger.event.data.action.split('_action_tag_separator_')[0] }}"
-              tag: "{{ trigger.event.data.action.split('_action_tag_separator_')[1] }}"
+              action: "{{ result.action }}"
+              tag: "{{ result.tag }}"
           - condition: template
             value_template: "{{ tag == notify_tag }}"
           - choose:
@@ -519,13 +536,13 @@ action:
                       additional_message_actions: >
                         {% set actions = [] %}
                         {% if 'enable_action_button_1' in include_action_buttons %}
-                          {% set actions = actions + [{ 'action': 'action_button_1' + '_action_tag_separator_' + notify_tag, 'title': action_button_1 }] %}
+                          {% set actions = actions + [{ 'action': 'action_button_1' + states('input_text.notification_action_tag_separator') + notify_tag, 'title': action_button_1 }] %}
                         {% endif %}
                         {% if 'enable_action_button_2' in include_action_buttons %}
-                          {% set actions = actions + [{ 'action': 'action_button_2' + '_action_tag_separator_' + notify_tag, 'title': action_button_2 }] %}
+                          {% set actions = actions + [{ 'action': 'action_button_2' + states('input_text.notification_action_tag_separator') + notify_tag, 'title': action_button_2 }] %}
                         {% endif %}
                         {% if 'enable_action_button_3' in include_action_buttons %}
-                          {% set actions = actions + [{ 'action': 'action_button_3' + '_action_tag_separator_' + notify_tag, 'title': action_button_3 }] %}
+                          {% set actions = actions + [{ 'action': 'action_button_3' + states('input_text.notification_action_tag_separator') + notify_tag, 'title': action_button_3 }] %}
                         {% endif %}
                         {{ actions }}
             default: []
