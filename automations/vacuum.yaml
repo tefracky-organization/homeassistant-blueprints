@@ -153,7 +153,6 @@ action:
               entity_id: "{{ vacuum_entity_id }}"
             data:
               fan_speed: "{{ suction_mode }}"
-            alias: "Saugkraft setzen"
           - alias: "Schritt 2: Prüfen, ob der Urlaubsmodus an ist."
             choose:
               - alias: "FALL 1.1: Urlaubsmodus ist AN - er Staubsauger startet sofort ohne Nachfrage."
