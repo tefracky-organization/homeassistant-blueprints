@@ -4,6 +4,22 @@ blueprint:
   description: >
     # 📢 Benachrichtigungen
 
+    ## **Version 1.10**
+
+    - 🛡️ **Robustheit und Fehlerbehebung**
+      - Es wurden Fallbacks und Standardwerte für mehrere optionale Benachrichtigungsvariablen (`notify_chronometer`, `notify_when`, `notify_url` etc.) hinzugefügt [attached_file:1].
+      - Dies behebt Template-Warnungen im Home Assistant-Protokoll, die auftreten konnten, wenn diese erweiterten Optionen nicht explizit in der Automation konfiguriert wurden [attached_file:1].
+
+    - ➕ **Neue Benachrichtigungsoptionen hinzugefügt**
+      - Die Blueprint unterstützt nun vier neue, optionale Felder zur besseren Steuerung von Android-Benachrichtigungen [attached_file:1]:
+        - **`notify_chronometer`**: Zeigt einen Chronometer in der Benachrichtigung an.
+        - **`notify_when`**: Fügt einen Zeitstempel hinzu.
+        - **`notify_when_relative`**: Ermöglicht relative Zeitangaben.
+        - **`notify_url`**: Definiert eine URL, die beim Klick auf die Benachrichtigung geöffnet wird.
+
+    - ⚙️ **Optimierte Skript-Übergabe**
+      - Die neuen, optionalen Variablen werden nun korrekt an das zentrale `script.notification_send` übergeben, um die Kompatibilität sicherzustellen und die neuen Funktionen zu aktivieren [attached_file:1].
+
     ## **Version 1.9**
 
     - 📞 **Telegram-Integration für Aktionen** Die Automation unterstützt nun Callback-Queries von Telegram. Interaktive Buttons in Telegram-Nachrichten können jetzt ebenfalls Aktionen auslösen, genau wie bei den mobilen App-Benachrichtigungen. Hierfür wurde ein neuer Trigger für `telegram_callback` hinzugefügt.
@@ -221,6 +237,30 @@ blueprint:
           default: "default_channel"
           selector:
             text:
+        notify_chronometer:
+          name: "Chronometer anzeigen"
+          description: "Zeigt einen Chronometer in der Benachrichtigung an (nur Android)."
+          default: false
+          selector:
+            boolean:
+        notify_when:
+          name: "Zeitstempel anzeigen"
+          description: "Zeigt den Zeitstempel der Benachrichtigung an (nur Android)."
+          default: false
+          selector:
+            boolean:
+        notify_when_relative:
+          name: "Relativer Zeitstempel"
+          description: "Zeigt einen relativen Zeitstempel an, z.B. 'in 5 minutes'. (nur Android)"
+          default: ""
+          selector:
+            text:
+        notify_url:
+          name: "Klick-Aktion URL"
+          description: "URL, die beim Klick auf die Benachrichtigung geöffnet wird."
+          default: ""
+          selector:
+            text:
         send_to_car:
           name: "Auto-Benachrichtigung aktivieren"
           description: >
@@ -383,6 +423,10 @@ variables:
   notify_message: !input notify_message
   notify_data: !input notify_data
   notify_tag: !input notify_tag
+  notify_chronometer: !input notify_chronometer
+  notify_when: !input notify_when
+  notify_when_relative: !input notify_when_relative
+  notify_url: !input notify_url
   send_to_car: !input send_to_car
   send_to_work: !input send_to_work
   include_action_buttons: !input include_action_buttons
@@ -404,7 +448,7 @@ variables:
       '30d663ef8b06c87a5bdb80a56af74b15',
       '0cfbf22f9dc76ecf11f78017669b1d51'
     ] %}
-    {% if send_to_work %}
+    {% if send_to_work | default(false) %}
       {{ devices + [
       'e0f19df8be795d8d5867ccf822025697',
       '170f72bbcf6e90b79e776d8511fc2419'
@@ -413,38 +457,12 @@ variables:
       {{ devices }}
     {% endif %}
     {#
-    {% if send_to_car %}
+    {% if send_to_car | default(false) %}
       {{ devices + ['7b4588bc469f471e30087c5757f2ebf4'] }}
     {% else %}
       {{ devices }}
     {% endif %}
     #}
-
-  device_message_data: >-
-    {% set message = namespace(data={}) %}
-    {% set actions = [] %}
-    {% if 'high_priority' in notify_data %}
-      {% set message.data = dict(message.data, **{ 'ttl': 0, 'priority': 'high' }) %}
-    {% endif %}
-    {% set message.data = dict(message.data, **{ 'channel': notify_tag }) %}
-    {% set message.data = dict(message.data, **{ 'tag': notify_tag }) %}
-    {% if 'enable_action_button_1' in include_action_buttons %}
-      {% set actions = actions + [{ 'action': 'action_button_1' + states('input_text.notification_action_tag_separator') + notify_tag, 'title': action_button_1 }] %}
-    {% endif %}
-    {% if 'enable_action_button_2' in include_action_buttons %}
-      {% set actions = actions + [{ 'action': 'action_button_2' + states('input_text.notification_action_tag_separator') + notify_tag, 'title': action_button_2 }] %}
-    {% endif %}
-    {% if 'enable_action_button_3' in include_action_buttons %}
-      {% set actions = actions + [{ 'action': 'action_button_3' + states('input_text.notification_action_tag_separator') + notify_tag, 'title': action_button_3 }] %}
-    {% endif %}
-    {% if 'sticky' in notify_data %}
-      {% set message.data = dict(message.data, **{ 'sticky': "true" }) %}
-      {% set actions = actions + [{ 'action': 'dismiss' +  states('input_text.notification_action_tag_separator') + notify_tag, 'title': action_button_delete }] %}
-    {% endif %}
-    {% if actions | length > 0 %}
-      {% set message.data = dict(message.data, **{ 'actions': actions }) %}
-    {% endif %}
-    {{ message.data }}
 
 triggers:
   # Faltet alle Einträge aus dynamic_trigger an den Anfang deiner Triggerliste
@@ -515,34 +533,30 @@ action:
             data:
               notify_tag: "{{ notify_tag }}"
       - alias: "Prüfe Trigger-Bedingungen für Hauptbenachrichtigung"
-        conditions:
-          - condition: template
-            value_template: "{{ not trigger or trigger.get('id') == None }}"
-            enabled: false
+        conditions: !input trigger_conditions
         sequence:
-          - choose:
-              - conditions: !input trigger_conditions
-                sequence:
-                  - alias: "Sende Benachrichtigung über zentrales Skript"
-                    service: script.notification_send
-                    data:
-                      notify_title: !input notify_title
-                      notify_message: !input notify_message
-                      notify_data: !input notify_data
-                      notify_tag: !input notify_tag
-                      send_to_car: !input send_to_car
-                      send_to_work: !input send_to_work
-                      action_button_delete: !input action_button_delete
-                      additional_message_actions: >
-                        {% set actions = [] %}
-                        {% if 'enable_action_button_1' in include_action_buttons %}
-                          {% set actions = actions + [{ 'action': 'action_button_1' + states('input_text.notification_action_tag_separator') + notify_tag, 'title': action_button_1 }] %}
-                        {% endif %}
-                        {% if 'enable_action_button_2' in include_action_buttons %}
-                          {% set actions = actions + [{ 'action': 'action_button_2' + states('input_text.notification_action_tag_separator') + notify_tag, 'title': action_button_2 }] %}
-                        {% endif %}
-                        {% if 'enable_action_button_3' in include_action_buttons %}
-                          {% set actions = actions + [{ 'action': 'action_button_3' + states('input_text.notification_action_tag_separator') + notify_tag, 'title': action_button_3 }] %}
-                        {% endif %}
-                        {{ actions }}
-            default: []
+          - service: script.notification_send
+            data:
+              notify_title: !input notify_title
+              notify_message: !input notify_message
+              notify_data: !input notify_data
+              notify_tag: !input notify_tag
+              notify_chronometer: !input notify_chronometer
+              notify_when: !input notify_when
+              notify_when_relative: !input notify_when_relative
+              notify_url: !input notify_url
+              send_to_car: !input send_to_car
+              send_to_work: !input send_to_work
+              action_button_delete: !input action_button_delete
+              additional_message_actions: >
+                {% set actions = [] %}
+                {% if 'enable_action_button_1' in include_action_buttons %}
+                  {% set actions = actions + [{ 'action': 'action_button_1' + states('input_text.notification_action_tag_separator') + notify_tag, 'title': action_button_1 }] %}
+                {% endif %}
+                {% if 'enable_action_button_2' in include_action_buttons %}
+                  {% set actions = actions + [{ 'action': 'action_button_2' + states('input_text.notification_action_tag_separator') + notify_tag, 'title': action_button_2 }] %}
+                {% endif %}
+                {% if 'enable_action_button_3' in include_action_buttons %}
+                  {% set actions = actions + [{ 'action': 'action_button_3' + states('input_text.notification_action_tag_separator') + notify_tag, 'title': action_button_3 }] %}
+                {% endif %}
+                {{ actions }}
