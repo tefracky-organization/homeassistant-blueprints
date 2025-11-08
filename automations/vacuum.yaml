@@ -182,7 +182,6 @@ action:
                   additional_message_actions:
                     - action: "{{ 'start' + states('input_text.notification_action_tag_separator') + notify_tag }}"
                       title: "Start"
-                alias: "Benachrichtigung 'Bereit' senden"
 
       - alias: "AKTION 2: Auf eine Benachrichtigungsaktion reagieren"
         conditions:
