@@ -48,6 +48,13 @@ blueprint:
 
 
     Required = *
+
+
+    🔗 **Credits:**
+
+    - [Original-Blaupause](https://gist.githubusercontent.com/Blackshome/180ca4a24af81cd5d843acfc039039bc/raw/e176f77c7be1677771c3c83d77083f011405ad81/notifications-and-announcements.yaml)
+
+    - [Community-Diskussion](https://community.home-assistant.io/t/notifications-announcements/728100)
   domain: automation
   input:
     trigger_settings:
