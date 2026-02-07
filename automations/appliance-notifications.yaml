@@ -919,6 +919,15 @@ blueprint:
             entity:
               filter:
                 domain: input_text
+        runtime_start_tracking_helper:
+          name: Runtime Tracking - Start Timestamp
+          description: >
+            Select the timestamp helper that will store the appliance start runtime.
+          default: []
+          selector:
+            entity:
+              filter:
+                domain: input_datetime
         runtime_tracking_end_message:
           name: Runtime Tracking - End Message
           description: >
@@ -1449,9 +1458,9 @@ variables:
   cost_per_kwh: !input cost_per_kwh
   start_power_consumption: !input start_power_consumption
   end_power_consumption: !input end_power_consumption
-  start_time: "{{ now().timestamp() }}"
   include_runtime_tracking: !input include_runtime_tracking
   runtime_tracking_helper: !input runtime_tracking_helper
+  runtime_start_tracking_helper: !input runtime_start_tracking_helper
   runtime_tracking_end_message: !input runtime_tracking_end_message
   include_duration_tracking: !input include_duration_tracking
   end_message_duration_tracking: !input end_message_duration_tracking
@@ -1669,6 +1678,11 @@ actions:
             id:
               - t0
         sequence:
+          - action: input_datetime.set_datetime
+            data:
+              timestamp: "{{ now() | as_timestamp }}"
+            target:
+              entity_id: !input runtime_start_tracking_helper
           - choose:
               - alias: "Check if power tracking is enabled"
                 conditions:
@@ -1793,7 +1807,7 @@ actions:
                                 {% else %}
                                   0
                                 {% endif %}
-                              run_time: "{{ (now().timestamp() - start_time) | int }}"
+                              run_time: "{{ (now().timestamp() - states(runtime_start_tracking_helper) | float) | int }}"
                               new_run_time_seconds: "{{ current_run_time_total + run_time }}"
                               hh: "{{ (new_run_time_seconds // 3600) | int }}"
                               mm: "{{ ((new_run_time_seconds % 3600) // 60) | int }}"
@@ -1819,7 +1833,7 @@ actions:
                                 {% else %}
                                   0
                                 {% endif %}
-                              run_time: "{{ (now().timestamp() - start_time) | int }}"
+                              run_time: "{{ (now().timestamp() - states(runtime_start_tracking_helper)) | int }}"
                               new_service_time_seconds: "{{ current_service_time_total + run_time }}"
                               hh: "{{ (new_service_time_seconds // 3600) | int }}"
                               mm: "{{ ((new_service_time_seconds % 3600) // 60) | int }}"
