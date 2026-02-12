@@ -393,7 +393,7 @@ blueprint:
             You can use the same tag across start, end, and watchdog notifications to ensure only one active notification remains throughout the appliance cycle.
 
 
-            If left blank, tapping the notification opens Home Assistant to your default page or the last viewed page, depending on your app settings.
+            If this input is left blank, tapping the notification opens Home Assistant to your default page or the last viewed page, depending on your app settings.
 
 
             For best results, use short, unique tags for each automation - for example: `washing-clothes`, `drying-clothes`, `washing-dishes`, etc.
@@ -1692,7 +1692,7 @@ actions:
                   - action: input_number.set_value
                     target:
                       entity_id: !input start_power_consumption
-                    data_template:
+                    data:
                       value: "{{ states(power_consumption_sensor) | float }}"
           - choose:
               - alias: "Check if start of notification is enabled"
@@ -1790,7 +1790,7 @@ actions:
                           - action: input_number.set_value
                             target:
                               entity_id: !input end_power_consumption
-                            data_template:
+                            data:
                               value: "{{ states(power_consumption_sensor) | float }}"
                   - choose:
                       - alias: "Check if Runtime tracking is enabled"
@@ -1807,7 +1807,7 @@ actions:
                                 {% else %}
                                   0
                                 {% endif %}
-                              run_time: "{{ (now().timestamp() - states(runtime_start_tracking_helper) | float) | int }}"
+                              run_time: "{{ (now().timestamp() - (states(runtime_start_tracking_helper) | as_timestamp)) | int }}"
                               new_run_time_seconds: "{{ current_run_time_total + run_time }}"
                               hh: "{{ (new_run_time_seconds // 3600) | int }}"
                               mm: "{{ ((new_run_time_seconds % 3600) // 60) | int }}"
@@ -1833,7 +1833,7 @@ actions:
                                 {% else %}
                                   0
                                 {% endif %}
-                              run_time: "{{ (now().timestamp() - states(runtime_start_tracking_helper)) | int }}"
+                              run_time: "{{ (now().timestamp() - (states(runtime_start_tracking_helper) | as_timestamp)) | int }}"
                               new_service_time_seconds: "{{ current_service_time_total + run_time }}"
                               hh: "{{ (new_service_time_seconds // 3600) | int }}"
                               mm: "{{ ((new_service_time_seconds % 3600) // 60) | int }}"
@@ -1875,15 +1875,8 @@ actions:
                               entity_id: !input run_status_entity
                             data:
                               option: !input run_status_end
-                  - alias: "Parallel actions for custom end actions & end notification"
+                  - alias: "Parallel actions for end notification"
                     parallel:
-                      - sequence:
-                          - choose:
-                              - alias: "Perform the custom end action"
-                                conditions:
-                                  - condition: template
-                                    value_template: "{{ 'enable_end_custom_actions' in include_custom_actions }}"
-                                sequence: !input end_custom_actions
                       - sequence:
                           - choose:
                               - alias: "Check if end of notification is enabled"
@@ -1925,6 +1918,7 @@ actions:
                                         {% else %}
                                           {{ end_notify_device }}
                                         {% endif %}
+                                      zone_excluded_end_devices: "{{ end_notify_device | reject('in', zone_filtered_end_devices) | list }}"
                                       message: >-
                                         {% set message = namespace(text='') %}
                                         {% if include_service_reminder == 'enable_service_reminder_and_notify' %}
@@ -1967,6 +1961,7 @@ actions:
                                           {% set message.text = message.text + '\n' + runtime_tracking_end_message + ' ' + run_time %}
                                         {% endif %}
                                         {% if include_duration_tracking == 'enable_duration_tracking' %}
+                                          {% set start_time = states(runtime_start_tracking_helper) | as_timestamp(0) %}
                                           {% set end_time = now().timestamp() %}
                                           {% set duration = (end_time - start_time) | int %}
                                           {% set hours = (duration // 3600) %}
@@ -1979,6 +1974,15 @@ actions:
                                           {% set message.text = message.text + '\n' + cycle_counter_end_message + ' ' + (cycle_count | string) %}
                                         {% endif %}
                                         {{ message.text }}
+                                  - alias: Benachrichtigungen von Geräten löschen, die keine End-Notification bekommen.
+                                    repeat:
+                                      for_each: "{{ zone_excluded_end_devices }}"
+                                      sequence:
+                                        - service: "notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify }}"
+                                          data:
+                                            message: "clear_notification"
+                                            data:
+                                              tag: "{{ end_notify_tag }}"
                                   - alias: "Send a notification to each device"
                                     repeat:
                                       for_each: "{{ zone_filtered_end_devices }}"
@@ -2206,10 +2210,12 @@ actions:
                                                             data: "{{ end_message_data }}"
                                                           continue_on_error: true
                                           - choose:
-                                              - alias: "Check if end reminder notification + clear is enabled"
+                                              - alias: "Check if end reminder notification + clear is enabled and tag is set"
                                                 conditions:
                                                   - condition: template
                                                     value_template: "{{ end_reminder_notification == 'enable_reminder_notification_clear' }}"
+                                                  - condition: template
+                                                    value_template: "{{ end_notify_tag != [] }}"
                                                 sequence:
                                                   - alias: "Send a notification to each device to clear notification"
                                                     repeat:
