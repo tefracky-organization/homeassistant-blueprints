@@ -687,7 +687,7 @@ blueprint:
             Enter the status you want to display when the appliance has finished.
 
 
-            This can be the final “Finished” status when your **not** using the **Reminder Notification Options**.
+            This can be the final "Finished" status when your **not** using the **Reminder Notification Options**.
 
 
             For example: `Finished`, `All Done!`, etc
@@ -711,7 +711,7 @@ blueprint:
             detects the appliance has been attended to (e.g., door opened, lid lifted, etc.).
 
 
-            This is the final “Ready” status of your appliance when you are using the **Reminder Notification Options**.
+            This is the final "Ready" status of your appliance when you are using the **Reminder Notification Options**.
 
 
             For example: `Ready`, `Next Load Please!`, `Ready & Waiting!`, etc.
@@ -1716,13 +1716,13 @@ actions:
                   - variables:
                       zone_filtered_start_devices: >
                         {% if 'zone_start' in include_device_tracker %}
-                          {% set zone_short_name = notify_zone.split('.')[-1] | lower | trim %}
+                          {% set zone_state = states(notify_zone) | lower | trim %}
                           {% set ns = namespace(devices=[]) %}
                           {% for device in start_notify_device %}
                             {% set device_status = namespace(in_zone=false) %}
                             {% set trackers = device_entities(device) | select('search', '^device_tracker\\.') | list %}
                             {% for tracker in trackers %}
-                              {% if (states(tracker) | string).lower().strip() == zone_short_name %}
+                              {% if (states(tracker) | string).lower().strip() == zone_state %}
                                 {% set device_status.in_zone = true %}
                               {% endif %}
                             {% endfor %}
@@ -1900,13 +1900,13 @@ actions:
                                   - variables:
                                       zone_filtered_end_devices: >
                                         {% if 'zone_end' in include_device_tracker %}
-                                          {% set zone_short_name = notify_zone.split('.')[-1] | lower | trim %}
+                                          {% set zone_state = states(notify_zone) | lower | trim %}
                                           {% set ns = namespace(devices=[]) %}
                                           {% for device in end_notify_device %}
                                             {% set device_status = namespace(in_zone=false) %}
                                             {% set trackers = device_entities(device) | select('search', '^device_tracker\\.') | list %}
                                             {% for tracker in trackers %}
-                                              {% if (states(tracker) | string).lower().strip() == zone_short_name %}
+                                              {% if (states(tracker) | string).lower().strip() == zone_state %}
                                                 {% set device_status.in_zone = true %}
                                               {% endif %}
                                             {% endfor %}
@@ -1918,7 +1918,6 @@ actions:
                                         {% else %}
                                           {{ end_notify_device }}
                                         {% endif %}
-                                      zone_excluded_end_devices: "{{ end_notify_device | reject('in', zone_filtered_end_devices) | list }}"
                                       message: >-
                                         {% set message = namespace(text='') %}
                                         {% if include_service_reminder == 'enable_service_reminder_and_notify' %}
@@ -1974,15 +1973,6 @@ actions:
                                           {% set message.text = message.text + '\n' + cycle_counter_end_message + ' ' + (cycle_count | string) %}
                                         {% endif %}
                                         {{ message.text }}
-                                  - alias: Benachrichtigungen von Geräten löschen, die keine End-Notification bekommen.
-                                    repeat:
-                                      for_each: "{{ zone_excluded_end_devices }}"
-                                      sequence:
-                                        - service: "notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify }}"
-                                          data:
-                                            message: "clear_notification"
-                                            data:
-                                              tag: "{{ end_notify_tag }}"
                                   - alias: "Send a notification to each device"
                                     repeat:
                                       for_each: "{{ zone_filtered_end_devices }}"
@@ -2043,13 +2033,13 @@ actions:
                                                 - variables:
                                                     zone_filtered_end_devices: >
                                                       {% if 'zone_end' in include_device_tracker %}
-                                                        {% set zone_short_name = notify_zone.split('.')[-1] | lower | trim %}
+                                                        {% set zone_state = states(notify_zone) | lower | trim %}
                                                         {% set ns = namespace(devices=[]) %}
                                                         {% for device in end_notify_device %}
                                                           {% set device_status = namespace(in_zone=false) %}
                                                           {% set trackers = device_entities(device) | select('search', '^device_tracker\\.') | list %}
                                                           {% for tracker in trackers %}
-                                                            {% if (states(tracker) | string).lower().strip() == zone_short_name %}
+                                                            {% if (states(tracker) | string).lower().strip() == zone_state %}
                                                               {% set device_status.in_zone = true %}
                                                             {% endif %}
                                                           {% endfor %}
@@ -2152,13 +2142,13 @@ actions:
                                                       zone_filtered_end_devices:
                                                         >
                                                         {% if 'zone_end' in include_device_tracker %}
-                                                          {% set zone_short_name = notify_zone.split('.')[-1] | lower | trim %}
+                                                          {% set zone_state = states(notify_zone) | lower | trim %}
                                                           {% set ns = namespace(devices=[]) %}
                                                           {% for device in end_notify_device %}
                                                             {% set device_status = namespace(in_zone=false) %}
                                                             {% set trackers = device_entities(device) | select('search', '^device_tracker\\.') | list %}
                                                             {% for tracker in trackers %}
-                                                              {% if (states(tracker) | string).lower().strip() == zone_short_name %}
+                                                              {% if (states(tracker) | string).lower().strip() == zone_state %}
                                                                 {% set device_status.in_zone = true %}
                                                               {% endif %}
                                                             {% endfor %}
@@ -2269,13 +2259,13 @@ actions:
           - variables:
               zone_filtered_watchdog_devices: >
                 {% if 'zone_watchdog' in include_device_tracker %}
-                  {% set zone_short_name = notify_zone.split('.')[-1] | lower | trim %}
+                  {% set zone_state = states(notify_zone) | lower | trim %}
                   {% set ns = namespace(devices=[]) %}
                   {% for device in watchdog_notify_device %}
                     {% set device_status = namespace(in_zone=false) %}
                     {% set trackers = device_entities(device) | select('search', '^device_tracker\.') | list %}
                     {% for tracker in trackers %}
-                      {% if (states(tracker) | string).lower().strip() == zone_short_name %}
+                      {% if (states(tracker) | string).lower().strip() == zone_state %}
                         {% set device_status.in_zone = true %}
                       {% endif %}
                     {% endfor %}
