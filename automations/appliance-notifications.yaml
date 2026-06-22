@@ -1716,7 +1716,11 @@ actions:
                   - variables:
                       zone_filtered_start_devices: >
                         {% if 'zone_start' in include_device_tracker %}
+<<<<<<< HEAD
                           {% set zone_state = states(notify_zone) | lower | trim %}
+=======
+                          {% set zone_state = notify_zone.split('.')[1] | lower | trim %}
+>>>>>>> 6d4f487 (Fixed bug in appliance notifications automation where zones were not correct filtered)
                           {% set ns = namespace(devices=[]) %}
                           {% for device in start_notify_device %}
                             {% set device_status = namespace(in_zone=false) %}
@@ -1900,7 +1904,11 @@ actions:
                                   - variables:
                                       zone_filtered_end_devices: >
                                         {% if 'zone_end' in include_device_tracker %}
+<<<<<<< HEAD
                                           {% set zone_state = states(notify_zone) | lower | trim %}
+=======
+                                          {% set zone_state = notify_zone.split('.')[1] | lower | trim %}
+>>>>>>> 6d4f487 (Fixed bug in appliance notifications automation where zones were not correct filtered)
                                           {% set ns = namespace(devices=[]) %}
                                           {% for device in end_notify_device %}
                                             {% set device_status = namespace(in_zone=false) %}
@@ -1919,11 +1927,12 @@ actions:
                                           {{ end_notify_device }}
                                         {% endif %}
                                       message: >-
-                                        {% set message = namespace(text='') %}
+                                        {% set message = namespace(text='', seen_service=[]) %}
                                         {% if include_service_reminder == 'enable_service_reminder_and_notify' %}
                                           {% set service_count = states(service_reminder_counter_helper) | int(0) %}
                                           {% set service_threshold = service_reminder_cycles | int %}
-                                          {% if service_count >= service_threshold %}
+                                          {% if service_count >= service_threshold and service_reminder_end_message not in message.seen_service %}
+                                            {% set message.seen_service = message.seen_service + [service_reminder_end_message] %}
                                             {% set message.text = message.text + service_reminder_end_message + '\n' %}
                                           {% endif %}
                                         {% endif %}
@@ -1940,7 +1949,8 @@ actions:
                                             (service_reminder_time_threshold.minutes | int * 60) +
                                             (service_reminder_time_threshold.seconds | int)
                                           %}
-                                          {% if service_reminder_helper_seconds >= service_reminder_time_threshold_seconds %}
+                                          {% if service_reminder_helper_seconds >= service_reminder_time_threshold_seconds and service_reminder_time_end_message not in message.seen_service %}
+                                            {% set message.seen_service = message.seen_service + [service_reminder_time_end_message] %}
                                             {% set message.text = message.text + service_reminder_time_end_message + '\n' %}
                                           {% endif %}
                                         {% endif %}
@@ -1992,11 +2002,12 @@ actions:
                                         sequence:
                                           - variables:
                                               reminder_message: >-
-                                                {% set message = namespace(text='') %}
+                                                {% set message = namespace(text='', seen_service=[]) %}
                                                 {% if include_service_reminder == 'enable_service_reminder_and_notify' %}
                                                   {% set service_count = states(service_reminder_counter_helper) | int(0) %}
                                                   {% set service_threshold = service_reminder_cycles | int %}
-                                                  {% if service_count >= service_threshold %}
+                                                  {% if service_count >= service_threshold and service_reminder_end_message not in message.seen_service %}
+                                                    {% set message.seen_service = message.seen_service + [service_reminder_end_message] %}
                                                     {% set message.text = message.text + service_reminder_end_message + '\n' %}
                                                   {% endif %}
                                                 {% endif %}
@@ -2013,7 +2024,8 @@ actions:
                                                     (service_reminder_time_threshold.minutes | int * 60) +
                                                     (service_reminder_time_threshold.seconds | int)
                                                   %}
-                                                  {% if service_reminder_helper_seconds >= service_reminder_time_threshold_seconds %}
+                                                  {% if service_reminder_helper_seconds >= service_reminder_time_threshold_seconds and service_reminder_time_end_message not in message.seen_service %}
+                                                    {% set message.seen_service = message.seen_service + [service_reminder_time_end_message] %}
                                                     {% set message.text = message.text + service_reminder_time_end_message + '\n' %}
                                                   {% endif %}
                                                 {% endif %}
@@ -2033,7 +2045,11 @@ actions:
                                                 - variables:
                                                     zone_filtered_end_devices: >
                                                       {% if 'zone_end' in include_device_tracker %}
+<<<<<<< HEAD
                                                         {% set zone_state = states(notify_zone) | lower | trim %}
+=======
+                                                        {% set zone_state = notify_zone.split('.')[1] | lower | trim %}
+>>>>>>> 6d4f487 (Fixed bug in appliance notifications automation where zones were not correct filtered)
                                                         {% set ns = namespace(devices=[]) %}
                                                         {% for device in end_notify_device %}
                                                           {% set device_status = namespace(in_zone=false) %}
@@ -2142,7 +2158,11 @@ actions:
                                                       zone_filtered_end_devices:
                                                         >
                                                         {% if 'zone_end' in include_device_tracker %}
+<<<<<<< HEAD
                                                           {% set zone_state = states(notify_zone) | lower | trim %}
+=======
+                                                          {% set zone_state = notify_zone.split('.')[1] | lower | trim %}
+>>>>>>> 6d4f487 (Fixed bug in appliance notifications automation where zones were not correct filtered)
                                                           {% set ns = namespace(devices=[]) %}
                                                           {% for device in end_notify_device %}
                                                             {% set device_status = namespace(in_zone=false) %}
@@ -2161,11 +2181,12 @@ actions:
                                                           {{ end_notify_device }}
                                                         {% endif %}
                                                       attended_message: >-
-                                                        {% set message = namespace(text='') %}
+                                                        {% set message = namespace(text='', seen_service=[]) %}
                                                         {% if include_service_reminder == 'enable_service_reminder_and_notify' %}
                                                           {% set service_count = states(service_reminder_counter_helper) | int(0) %}
                                                           {% set service_threshold = service_reminder_cycles | int %}
-                                                          {% if service_count >= service_threshold %}
+                                                          {% if service_count >= service_threshold and service_reminder_end_message not in message.seen_service %}
+                                                            {% set message.seen_service = message.seen_service + [service_reminder_end_message] %}
                                                             {% set message.text = message.text + service_reminder_end_message + '\n' %}
                                                           {% endif %}
                                                         {% endif %}
@@ -2182,7 +2203,8 @@ actions:
                                                             (service_reminder_time_threshold.minutes | int * 60) +
                                                             (service_reminder_time_threshold.seconds | int)
                                                           %}
-                                                          {% if service_reminder_helper_seconds >= service_reminder_time_threshold_seconds %}
+                                                          {% if service_reminder_helper_seconds >= service_reminder_time_threshold_seconds and service_reminder_time_end_message not in message.seen_service %}
+                                                            {% set message.seen_service = message.seen_service + [service_reminder_time_end_message] %}
                                                             {% set message.text = message.text + service_reminder_time_end_message + '\n' %}
                                                           {% endif %}
                                                         {% endif %}
@@ -2259,7 +2281,11 @@ actions:
           - variables:
               zone_filtered_watchdog_devices: >
                 {% if 'zone_watchdog' in include_device_tracker %}
+<<<<<<< HEAD
                   {% set zone_state = states(notify_zone) | lower | trim %}
+=======
+                  {% set zone_state = notify_zone.split('.')[1] | lower | trim %}
+>>>>>>> 6d4f487 (Fixed bug in appliance notifications automation where zones were not correct filtered)
                   {% set ns = namespace(devices=[]) %}
                   {% for device in watchdog_notify_device %}
                     {% set device_status = namespace(in_zone=false) %}
