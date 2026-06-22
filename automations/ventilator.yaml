@@ -1,0 +1,243 @@
+blueprint:
+  source_url: "https://raw.githubusercontent.com/tefracky/homeassistant-blueprints/refs/heads/blueprints/automations/ventilator.yaml"
+  name: Ventilatorregelung dynamisch
+  description: >
+    Diese Blaupause regelt einen Ventilator nach folgenden Regeln:
+
+    1. Wenn Urlaub aktiviert ist, bleibt die Automatisierung komplett inaktiv.
+
+    2. Tagsüber (awake = on und manueller Schalter = off):
+       - Wenn Fenster offen ist und Innentemperatur > Außentemperatur,
+         dann reverse @ 50 %.
+       - Sonst bleibt der Ventilator aus.
+
+    3. Nachts ODER bei manuellem Eingriff (awake = off ODER manueller Schalter = on):
+       - Gilt nur, wenn room_sleep_sensor = on (oder kein Sensor konfiguriert).
+       - Wenn extrem warm → forward @ 50 %.
+       - Wenn sehr warm → forward → 33 %.
+       - Wenn warm → forward @ 16 %.
+       - Sonst bleibt der Ventilator aus.
+
+    4. Alle Befehle laufen über Repeat-Schleifen (bis zu 10x) für stabilen Zustand.
+
+    Empfohlene Sensoren:
+      Schlafzimmer → binary_sensor.schlafzimmer_schlafplatz_aktiv
+      Gästezimmer  → binary_sensor.gastezimmer_schlafplatz_aktiv
+  domain: automation
+  input:
+    fan_entity:
+      name: Ventilator
+      description: Der zu steuernde Ventilator
+      selector:
+        entity:
+          domain: fan
+    window_sensor:
+      name: Fensterkontakt
+      description: Binary Sensor für Fenster offen/geschlossen
+      selector:
+        entity:
+          domain: binary_sensor
+    room_sleep_sensor:
+      name: Schlaf-Sensor für diesen Raum
+      description: >
+        Sensor, der `on` ist, wenn in diesem Raum geschlafen wird (mind. eine Person).
+        Empfehlung: binary_sensor.schlafzimmer_schlafplatz_aktiv bzw.
+        binary_sensor.gastezimmer_schlafplatz_aktiv.
+        Wenn leer gelassen, greift Nachtlogik immer wenn awake = off.
+      default: null
+      selector:
+        entity:
+          domain: binary_sensor
+          multiple: false
+    manual_override_switch:
+      name: Manueller Schalter
+      description: Wenn dieser Schalter on ist, wird Nachtlogik erzwungen
+      selector:
+        entity:
+          domain: switch
+    inside_temperature_sensor:
+      name: Innentemperatur
+      selector:
+        entity:
+          domain: sensor
+    hot_sensor:
+      name: Warm-Sensor
+      selector:
+        entity:
+          domain: binary_sensor
+    very_hot_sensor:
+      name: Sehr-warm-Sensor
+      selector:
+        entity:
+          domain: binary_sensor
+    extremely_hot_sensor:
+      name: Extrem-warm-Sensor
+      selector:
+        entity:
+          domain: binary_sensor
+trigger:
+  - platform: state
+    entity_id: !input window_sensor
+    to: "on"
+    id: window_opened
+  - platform: state
+    entity_id: !input window_sensor
+    to: "off"
+    id: window_closed
+  - platform: state
+    entity_id: binary_sensor.awake
+    to: "on"
+    for: "00:03:00"
+    id: awake_on
+  - platform: state
+    entity_id: binary_sensor.awake
+    to: "off"
+    id: awake_off
+  - platform: state
+    entity_id: !input hot_sensor
+    id: hot_changed
+  - platform: state
+    entity_id: !input very_hot_sensor
+    id: very_hot_changed
+  - platform: state
+    entity_id: !input extremely_hot_sensor
+    id: extremely_hot_changed
+  - platform: state
+    entity_id: !input manual_override_switch
+    id: switch_changed
+  # Trigger wenn sich der Schlafstatus dieses Raums ändert
+  - platform: state
+    entity_id: !input room_sleep_sensor
+    id: sleep_sensor_changed
+condition:
+  - condition: state
+    entity_id: binary_sensor.zu_hause
+    state: "on"
+  - condition: state
+    entity_id: input_boolean.vacation
+    state: "off"
+action:
+  - variables:
+      fan_entity: !input fan_entity
+      window_sensor: !input window_sensor
+      room_sleep_sensor: !input room_sleep_sensor
+      manual_override_switch: !input manual_override_switch
+      inside_temperature_sensor: !input inside_temperature_sensor
+      hot_sensor: !input hot_sensor
+      very_hot_sensor: !input very_hot_sensor
+      extremely_hot_sensor: !input extremely_hot_sensor
+      # True wenn in diesem Raum jemand schläft (oder kein Sensor konfiguriert)
+      raum_schlaeft: >-
+        {% if room_sleep_sensor %}
+          {{ is_state(room_sleep_sensor, 'on') }}
+        {% else %}
+          true
+        {% endif %}
+      # Nachtmodus: awake = off UND jemand schläft in diesem Raum
+      ventilator_ist_nacht: >-
+        {{ is_state('binary_sensor.awake', 'off') and raum_schlaeft }}
+      # Nachtlogik greift wenn Nacht-in-diesem-Raum ODER manueller Schalter
+      ventilator_nacht_or_schalter: >-
+        {{ ventilator_ist_nacht or is_state(manual_override_switch, 'on') }}
+      innen_temp: >-
+        {{ states(inside_temperature_sensor) | float(16) }}
+      aussen_temp: >-
+        {{ states('sensor.zu_hause_temperatur') | float(16) }}
+      # Richtung: Nacht → forward, Tag mit offenem Fenster + wärmer innen → reverse
+      ventilator_modus: >-
+        {% if ventilator_ist_nacht %}
+          forward
+        {% elif is_state(window_sensor, 'on') and innen_temp > aussen_temp %}
+          reverse
+        {% else %}
+          forward
+        {% endif %}
+      # Zielgeschwindigkeit: 0 = aus
+      ventilator_zielgeschwindigkeit: >-
+        {% if not ventilator_nacht_or_schalter
+              and is_state(window_sensor, 'on')
+              and innen_temp > aussen_temp %}
+          50
+        {% elif ventilator_nacht_or_schalter
+              and is_state(extremely_hot_sensor, 'on') %}
+          50
+        {% elif ventilator_nacht_or_schalter
+              and is_state(very_hot_sensor, 'on') %}
+          33
+        {% elif ventilator_nacht_or_schalter
+              and is_state(hot_sensor, 'on') %}
+          16
+        {% else %}
+          0
+        {% endif %}
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ ventilator_zielgeschwindigkeit | int > 0 }}"
+        sequence:
+          - alias: Setze Richtung
+            repeat:
+              while:
+                - condition: template
+                  value_template: "{{ repeat.index < 10 }}"
+                - condition: template
+                  value_template: >-
+                    {{ state_attr(fan_entity, 'direction') != ventilator_modus }}
+              sequence:
+                - service: fan.turn_off
+                  target:
+                    entity_id: !input fan_entity
+                - delay: "00:00:10"
+                - service: fan.set_direction
+                  target:
+                    entity_id: !input fan_entity
+                  data:
+                    direction: "{{ ventilator_modus }}"
+                - delay: "00:00:10"
+          - alias: Setze Geschwindigkeit
+            repeat:
+              while:
+                - condition: template
+                  value_template: "{{ repeat.index < 10 }}"
+                - condition: template
+                  value_template: >-
+                    {{ state_attr(fan_entity, 'percentage') | int != ventilator_zielgeschwindigkeit | int }}
+              sequence:
+                - service: fan.set_percentage
+                  target:
+                    entity_id: !input fan_entity
+                  data:
+                    percentage: "{{ ventilator_zielgeschwindigkeit | int }}"
+                - delay: "00:00:10"
+          - alias: Einschalten
+            repeat:
+              while:
+                - condition: template
+                  value_template: "{{ repeat.index < 10 }}"
+                - condition: state
+                  entity_id: !input fan_entity
+                  state: "off"
+              sequence:
+                - service: fan.turn_on
+                  target:
+                    entity_id: !input fan_entity
+                - delay: "00:00:10"
+      - conditions:
+          - condition: template
+            value_template: "{{ ventilator_zielgeschwindigkeit | int == 0 }}"
+        sequence:
+          - alias: Ausschalten
+            repeat:
+              while:
+                - condition: template
+                  value_template: "{{ repeat.index < 10 }}"
+                - condition: state
+                  entity_id: !input fan_entity
+                  state: "on"
+              sequence:
+                - service: fan.turn_off
+                  target:
+                    entity_id: !input fan_entity
+                - delay: "00:00:10"
+    default: []
+mode: restart
