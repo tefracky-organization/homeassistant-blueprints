@@ -1716,11 +1716,7 @@ actions:
                   - variables:
                       zone_filtered_start_devices: >
                         {% if 'zone_start' in include_device_tracker %}
-<<<<<<< HEAD
-                          {% set zone_state = states(notify_zone) | lower | trim %}
-=======
                           {% set zone_state = notify_zone.split('.')[1] | lower | trim %}
->>>>>>> 6d4f487 (Fixed bug in appliance notifications automation where zones were not correct filtered)
                           {% set ns = namespace(devices=[]) %}
                           {% for device in start_notify_device %}
                             {% set device_status = namespace(in_zone=false) %}
@@ -1904,11 +1900,7 @@ actions:
                                   - variables:
                                       zone_filtered_end_devices: >
                                         {% if 'zone_end' in include_device_tracker %}
-<<<<<<< HEAD
-                                          {% set zone_state = states(notify_zone) | lower | trim %}
-=======
                                           {% set zone_state = notify_zone.split('.')[1] | lower | trim %}
->>>>>>> 6d4f487 (Fixed bug in appliance notifications automation where zones were not correct filtered)
                                           {% set ns = namespace(devices=[]) %}
                                           {% for device in end_notify_device %}
                                             {% set device_status = namespace(in_zone=false) %}
@@ -2045,11 +2037,7 @@ actions:
                                                 - variables:
                                                     zone_filtered_end_devices: >
                                                       {% if 'zone_end' in include_device_tracker %}
-<<<<<<< HEAD
-                                                        {% set zone_state = states(notify_zone) | lower | trim %}
-=======
                                                         {% set zone_state = notify_zone.split('.')[1] | lower | trim %}
->>>>>>> 6d4f487 (Fixed bug in appliance notifications automation where zones were not correct filtered)
                                                         {% set ns = namespace(devices=[]) %}
                                                         {% for device in end_notify_device %}
                                                           {% set device_status = namespace(in_zone=false) %}
@@ -2158,11 +2146,7 @@ actions:
                                                       zone_filtered_end_devices:
                                                         >
                                                         {% if 'zone_end' in include_device_tracker %}
-<<<<<<< HEAD
-                                                          {% set zone_state = states(notify_zone) | lower | trim %}
-=======
                                                           {% set zone_state = notify_zone.split('.')[1] | lower | trim %}
->>>>>>> 6d4f487 (Fixed bug in appliance notifications automation where zones were not correct filtered)
                                                           {% set ns = namespace(devices=[]) %}
                                                           {% for device in end_notify_device %}
                                                             {% set device_status = namespace(in_zone=false) %}
@@ -2281,11 +2265,7 @@ actions:
           - variables:
               zone_filtered_watchdog_devices: >
                 {% if 'zone_watchdog' in include_device_tracker %}
-<<<<<<< HEAD
-                  {% set zone_state = states(notify_zone) | lower | trim %}
-=======
                   {% set zone_state = notify_zone.split('.')[1] | lower | trim %}
->>>>>>> 6d4f487 (Fixed bug in appliance notifications automation where zones were not correct filtered)
                   {% set ns = namespace(devices=[]) %}
                   {% for device in watchdog_notify_device %}
                     {% set device_status = namespace(in_zone=false) %}
