@@ -147,14 +147,17 @@ action:
       ventilator_modus: >-
         {% if ventilator_ist_nacht %}
           forward
-        {% elif is_state(window_sensor, 'on') and innen_temp > aussen_temp %}
+        {% elif is_state('binary_sensor.awake', 'on')
+              and is_state(window_sensor, 'on')
+              and innen_temp > aussen_temp %}
           reverse
         {% else %}
           forward
         {% endif %}
       # Zielgeschwindigkeit: 0 = aus
       ventilator_zielgeschwindigkeit: >-
-        {% if not ventilator_nacht_or_schalter
+        {% if is_state('binary_sensor.awake', 'on')
+              and not is_state(manual_override_switch, 'on')
               and is_state(window_sensor, 'on')
               and innen_temp > aussen_temp %}
           50
