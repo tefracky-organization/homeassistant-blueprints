@@ -117,6 +117,13 @@ condition:
     entity_id: input_boolean.vacation
     state: "off"
 action:
+  - alias: Entprellen (verhindert überlappende Durchläufe bei Trigger-Kaskaden)
+    # mode: restart bricht diesen delay sofort ab, wenn kurz danach ein
+    # weiterer Trigger feuert (awake, Schlafplatz-Belegung, manueller
+    # Schalter, Fenster ...). Es wurde noch kein fan.*-Befehl gesendet,
+    # d.h. bei einer Trigger-Kaskade läuft am Ende nur EIN sauberer
+    # Durchlauf mit dem zuletzt gültigen Zustand.
+    delay: "00:00:03"
   - variables:
       fan_entity: !input fan_entity
       window_sensor: !input window_sensor
