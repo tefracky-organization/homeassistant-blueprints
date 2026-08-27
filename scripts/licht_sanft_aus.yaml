@@ -1,0 +1,82 @@
+blueprint:
+  source_url: "https://raw.githubusercontent.com/tefracky/homeassistant-blueprints/refs/heads/blueprints/scripts/licht_sanft_aus.yaml"
+  name: Licht sanft aus
+  description: >
+    Schaltet ein Licht sanft aus: erst Übergang auf minimales Rot (1%, RGB 255/0/0,
+    1 Sekunde Transition), dann retry.action zum sicheren Ausschalten.
+    Optional können weitere Lichter ohne Rot-Übergang parallel ausgeschaltet werden
+    (z.B. ein Wickeltisch oder eine zusätzliche Leuchte im Raum).
+  domain: script
+  input:
+    main_light:
+      name: Hauptlicht
+      description: Das Licht, das mit Rot-Übergang sanft ausgeschaltet wird.
+      selector:
+        entity:
+          domain: light
+
+    extra_lights:
+      name: Zusatzlichter (optional)
+      description: >
+        Weitere Lichter, die parallel und ohne Rot-Übergang ausgeschaltet werden.
+        Leer lassen, wenn nicht benötigt.
+      default: []
+      selector:
+        entity:
+          domain: light
+          multiple: true
+
+sequence:
+  # Nur weitermachen wenn das Hauptlicht überhaupt an ist
+  - alias: "Guard: Hauptlicht an?"
+    condition: state
+    entity_id: !input main_light
+    state: "on"
+
+  # Parallele Ausschalt-Sequenz: Hauptlicht mit Rot-Übergang, Zusatzlichter direkt
+  - alias: "Parallel ausschalten"
+    parallel:
+      # Hauptlicht: erst auf minimales Rot dimmen, dann sicher ausschalten
+      - sequence:
+          - alias: "Hauptlicht auf minimales Rot dimmen"
+            action: light.turn_on
+            target:
+              entity_id: !input main_light
+            data:
+              rgb_color: [255, 0, 0]
+              transition: 1
+              brightness_pct: 1
+
+          - alias: "1 Sekunde warten"
+            delay:
+              seconds: 1
+
+          - alias: "Hauptlicht mit Retry ausschalten"
+            action: retry.action
+            target:
+              entity_id: !input main_light
+            data:
+              action: light.turn_off
+              retries: 60
+              expected_state: "off"
+              state_grace: 1.1
+
+      # Zusatzlichter: direkt ausschalten (nur wenn Liste nicht leer)
+      - sequence:
+          - alias: "Zusatzlichter ausschalten (wenn vorhanden)"
+            if:
+              - condition: template
+                value_template: "{{ extra_lights | default([]) | length > 0 }}"
+            then:
+              - action: retry.action
+                target:
+                  entity_id: !input extra_lights
+                data:
+                  action: light.turn_off
+                  retries: 60
+                  expected_state: "off"
+                  state_grace: 1.1
+
+mode: single
+max_exceeded: silent
+icon: mdi:lightbulb-multiple-off-outline

@@ -1,0 +1,446 @@
+blueprint:
+  source_url: "https://raw.githubusercontent.com/tefracky/homeassistant-blueprints/refs/heads/blueprints/scripts/zimmer_nacht_an.yaml"
+  name: Zimmer Nacht an
+  description: >
+    Schaltet Zimmergeräte für den Nacht-Modus ein. Logik:
+    1. Optionale Alexa-Bestätigung
+    2. Zusätzliche Aktionen (z.B. Mediensteuerung) UND Haupt-Steckdose/Licht-
+       Initialzustand laufen PARALLEL (nicht mehr sequenziell) – ein
+       langsam bootendes Echo-Gerät verzögert dadurch nicht mehr das
+       Einschalten von Licht/Steckdose.
+    3. Initial: Geräte an wenn Fenster zu (mosquito_save=off) UND es dunkel ist (sun_is_down=on)
+    4. Warteschleife (max. 1 Stunde Gesamtlaufzeit): bei jeder Fensteränderung
+       (oder Sonnenuntergang) wird neu reagiert. Zusätzlich wird spätestens
+       alle 5 Minuten (auch ohne neuen Trigger) der Ziel-Zustand erneut
+       geprüft (Selbstheilung – siehe Kommentar bei "Warte auf
+       Fensteränderung"). Die Selbstheilung ist bewusst ASYMMETRISCH:
+         - "Geräte ausschalten" läuft IMMER, auch beim reinen 5-Min-Timeout
+           ohne echten Trigger – das korrigiert Geräte, die fälschlich an
+           bleiben (z.B. ein Switch, der nach einem gescheiterten
+           retry.action-Versuch "on" meldet, obwohl er aus sein sollte).
+         - "Geräte einschalten" läuft NUR bei einem echten Sensor-Trigger
+           (Fenster/Sonnenuntergang ändert sich tatsächlich), NICHT beim
+           reinen Timeout-Poll. Sonst würde die Selbstheilung ein
+           manuelles Eingreifen überschreiben – z.B. Licht von Hand
+           gedimmt/ausgemacht, weil das Baby schläft. Ein manuelles Aus
+           bleibt so bestehen, bis sich der Fenster-/Dunkelheitszustand
+           wirklich ändert.
+       Die Schleife endet spätestens nach 1h, oder früher, falls das Skript
+       von außen gestoppt wird (z.B. durch das zugehörige
+       zimmer_nacht_aus.yaml, das dieses Skript per script.turn_off beendet).
+
+    Alle Licht- und Steckdosen-Schaltvorgänge laufen über retry.action
+    (amitfin/retry), um temporäre Konnektivitäts- oder Verfügbarkeitsprobleme
+    (unavailable-Entitäten, Funkfehler) abzufangen. Für die Switches ist
+    retries auf 9 erhöht (Standard: 7) – siehe Kommentar bei den jeweiligen
+    Schritten. Scheitert ein Switch trotz aller Retries endgültig, wird per
+    on_error eine Android-Push-Benachrichtigung ausgelöst (script.notification_send)
+    – die Selbstheilung (5-Min-Poll) versucht es trotzdem automatisch weiter,
+    die Benachrichtigung dient nur der Sichtbarkeit.
+  domain: script
+  input:
+    mosquito_save_sensor:
+      name: Mückenschutz-Sensor
+      description: >
+        Binary sensor, der 'on' ist wenn das Fenster offen ist UND Mückensaison.
+        'off' bedeutet: Fenster zu oder keine Mückensaison → Geräte dürfen an.
+      selector:
+        entity:
+          domain: binary_sensor
+
+    main_switch:
+      name: Haupt-Steckdose (optional)
+      description: >
+        Steckdose, die als erstes eingeschaltet wird (z.B. Mehrfachsteckdose für den Raum).
+        Leer lassen wenn nicht benötigt.
+      default: ""
+      selector:
+        entity:
+          domain: switch
+
+    switches_on:
+      name: Deko-Switches (optional)
+      description: Switches, die ein- bzw. ausgeschaltet werden (z.B. Deko-Leuchten).
+      default: []
+      selector:
+        entity:
+          domain: switch
+          multiple: true
+
+    light_entity:
+      name: Licht (optional)
+      description: Licht, das mit Helligkeit und Farbtemperatur eingeschaltet wird.
+      default: ""
+      selector:
+        entity:
+          domain: light
+
+    light_brightness_pct:
+      name: Helligkeit (%)
+      description: Helligkeit beim Einschalten (0–100).
+      default: 20
+      selector:
+        number:
+          min: 1
+          max: 100
+          unit_of_measurement: "%"
+
+    light_color_temp_kelvin:
+      name: Farbtemperatur (Kelvin)
+      description: Farbtemperatur beim Einschalten. 2000K = warm, 6500K = kalt.
+      default: 2000
+      selector:
+        number:
+          min: 1700
+          max: 6500
+          unit_of_measurement: K
+
+    extra_actions:
+      name: Zusätzliche Aktionen (optional)
+      description: >
+        Beliebige Aktionen, die parallel zur Haupt-Steckdosen-/Licht-Logik
+        ausgeführt werden, nach der Alexa-Bestätigung. Geeignet z.B. für
+        Mediensteuerung, Echo-Geräte einschalten, Routinen abspielen o.ä.
+        Da dieser Zweig parallel läuft, blockiert ein langsamer/wartender
+        Schritt hier (z.B. wait_template auf ein Echo-Gerät) NICHT mehr das
+        Einschalten von Licht/Steckdose.
+      default: []
+      selector:
+        action: {}
+
+sequence:
+  # ── 1. Variablen ──────────────────────────────────────────────────────────
+  - alias: "Variablen setzen"
+    variables:
+      alexa_answer_parsed: "{{ alexa_answer if alexa_answer is defined else true }}"
+      _main_switch: !input main_switch
+      _switches_on: !input switches_on
+      _light_entity: !input light_entity
+      _light_brightness_pct: !input light_brightness_pct
+      _light_color_temp_kelvin: !input light_color_temp_kelvin
+      # WICHTIG: extra_actions selbst als Variable erfassen. Ein bloßes
+      # "{{ extra_actions }}" im Template weiter unten wäre NICHT dasselbe
+      # wie !input extra_actions – !input ist eine reine YAML-Ersetzung zur
+      # Parse-Zeit, keine Jinja-Laufzeitvariable. Ohne diese Zeile wäre
+      # "extra_actions" im Template schlicht undefined.
+      _extra_actions: !input extra_actions
+
+  # ── 2. Alexa-Bestätigung ──────────────────────────────────────────────────
+  - alias: "Sprachbestätigung via Alexa"
+    if:
+      - condition: template
+        value_template: "{{ alexa_answer_parsed == true }}"
+    then:
+      - action: script.turn_on
+        data:
+          variables:
+            message: "{{ this.attributes.friendly_name }}"
+        target:
+          entity_id: script.speak_last_alexa
+
+  # ── 3. Zusätzliche Aktionen UND Haupt-Steckdose/Licht parallel ausführen ──
+  # Vorher liefen diese sequenziell hintereinander: extra_actions (kann z.B.
+  # per wait_template auf ein Echo-Gerät warten, das erst hochfahren muss)
+  # blockierte damit auch das Einschalten von Haupt-Steckdose und Licht –
+  # bei einem langsam bootenden Echo im Extremfall mehrere Minuten. Jetzt
+  # laufen beide Zweige gleichzeitig in einem parallel-Block: ein langsames
+  # Echo verzögert das Licht nicht mehr.
+  - alias: "Zusätzliche Aktionen und Geräte-Einschaltlogik parallel ausführen"
+    parallel:
+      - alias: "Zusätzliche Aktionen (falls konfiguriert)"
+        if:
+          - condition: template
+            value_template: "{{ _extra_actions | length > 0 }}"
+        then: !input extra_actions
+
+      - alias: "Haupt-Steckdose und Licht: Initialzustand"
+        sequence:
+          # ── 3a. Haupt-Steckdose einschalten (falls konfiguriert) ─────────
+          - alias: "Haupt-Steckdose einschalten"
+            if:
+              - condition: template
+                value_template: "{{ _main_switch != '' }}"
+            then:
+              - action: retry.action
+                target:
+                  entity_id: "{{ _main_switch }}"
+                data:
+                  action: switch.turn_on
+                  expected_state: "on"
+                  state_grace: 1.1
+
+          # ── 3b. Initialzustand: an wenn Fenster zu UND dunkel ────────────
+          - alias: "Initialzustand: Geräte an wenn Fenster zu und dunkel"
+            if:
+              - condition: state
+                entity_id: !input mosquito_save_sensor
+                state: "off"
+              - condition: state
+                entity_id: binary_sensor.sun_is_down
+                state: "on"
+            then:
+              - alias: "Geräte einschalten"
+                parallel:
+                  - alias: "Switches an (falls konfiguriert)"
+                    if:
+                      - condition: template
+                        value_template: "{{ _switches_on | length > 0 }}"
+                    then:
+                      # retry.action mit expected_state: "on" – bei reinen Switches
+                      # unkritisch, da es kein Attribut wie Helligkeit gibt.
+                      # retries: 9 (statt Standard 7) – manche Deko-Switches (z.B.
+                      # WLAN-Steckdosen) hängen an einer instabileren Verbindung und
+                      # brauchen länger, bis ein Kommando durchkommt. Jede Entität im
+                      # target läuft laut amitfin/retry-Doku in einer eigenen,
+                      # isolierten Retry-Schleife – eine langsame Entität blockiert
+                      # also keine andere. Standard-Backoff (exponentiell) ergibt bei
+                      # retries: 9 kumulative Versuchszeitpunkte bei 0/1/3/7/15/31/
+                      # 63/127/255s (~4:15 Gesamtfenster statt ~63s).
+                      #
+                      # on_error: läuft nur, wenn ALLE Retries für eine bestimmte
+                      # Entität endgültig gescheitert sind (kein Race, da sequenziell
+                      # NACH dem echten Scheitern – nicht wie ein externer Watcher,
+                      # der raten müsste). entity_id/action sind dann als Variablen
+                      # verfügbar und beziehen sich nur auf die tatsächlich
+                      # gescheiterte Entität. Die 5-Min-Selbstheilung (Schritt 5)
+                      # versucht trotzdem automatisch weiter – das hier ist reine
+                      # Sichtbarkeit per Push-Benachrichtigung.
+                      - action: retry.action
+                        target:
+                          entity_id: "{{ _switches_on }}"
+                        data:
+                          action: switch.turn_on
+                          expected_state: "on"
+                          retries: 9
+                          on_error:
+                            - alias: "Benachrichtigung: Schalten endgültig fehlgeschlagen"
+                              action: script.turn_on
+                              target:
+                                entity_id: script.notification_send
+                              data:
+                                variables:
+                                  notify_title: "⚠️ Gerät reagiert nicht"
+                                  notify_message: >-
+                                    {{ state_attr(entity_id, 'friendly_name') or entity_id }}
+                                    konnte trotz mehrerer Versuche nicht
+                                    {{ 'ausgeschaltet' if action == 'switch.turn_off' else 'eingeschaltet' }}
+                                    werden (Skript: {{ this.attributes.friendly_name }}).
+                                  notify_tag: "retry_fehler_{{ entity_id | replace('.', '_') }}"
+                  - alias: "Licht an (falls konfiguriert)"
+                    if:
+                      - condition: template
+                        value_template: "{{ _light_entity != '' }}"
+                    then:
+                      # retry.action OHNE expected_state: retry.action würde bei
+                      # expected_state: "on" den Aufruf überspringen, wenn das Licht
+                      # schon an ist – dann würde die Nacht-Helligkeit NICHT gesetzt.
+                      # Ohne expected_state wird light.turn_on immer ausgeführt (setzt
+                      # also zuverlässig Helligkeit + Farbtemperatur), und retry greift
+                      # weiterhin bei Exceptions und unavailable-Entitäten.
+                      - action: retry.action
+                        target:
+                          entity_id: "{{ _light_entity }}"
+                        data:
+                          action: light.turn_on
+                          brightness_pct: "{{ _light_brightness_pct }}"
+                          color_temp_kelvin: "{{ _light_color_temp_kelvin }}"
+
+  # ── 4. Startzeit für die Warteschleife merken ─────────────────────────────
+  # WICHTIG: now() liefert ein datetime-Objekt. In einer `variables:`-Aktion
+  # wird das Ergebnis von HA aber zu einem String gerendert (z.B.
+  # "2026-07-02 22:30:24.311736+02:00"), nicht als datetime-Objekt gespeichert.
+  # Rechnet man später mit `now() - _loop_start`, kracht es mit
+  # "TypeError: unsupported operand type(s) for -: 'datetime.datetime' and 'str'".
+  # Deshalb hier stattdessen mit einem Unix-Timestamp (Zahl) arbeiten – der
+  # übersteht die String-Konvertierung unbeschadet, notfalls per `| float`
+  # zurückgecastet.
+  - alias: "Startzeit der Warteschleife merken"
+    variables:
+      _loop_start_ts: "{{ now().timestamp() }}"
+
+  # ── 5. Warteschleife: mehrfach auf Fensteränderungen reagieren (max. 1h) ─
+  # Läuft so lange, bis entweder 1 Stunde Gesamtlaufzeit erreicht ist, oder
+  # bis das Skript extern gestoppt wird (script.turn_off), typischerweise
+  # durch das zugehörige zimmer_nacht_aus.yaml-Skript.
+  - alias: "Warteschleife: mehrfach auf Fensteränderungen reagieren"
+    repeat:
+      while:
+        - alias: "Noch keine Stunde seit Schleifenstart vergangen"
+          condition: template
+          value_template: >-
+            {{ (now().timestamp() - (_loop_start_ts | float)) < 3600 }}
+      sequence:
+        - alias: "Warte auf Fensteränderung oder Sonnenuntergang"
+          wait_for_trigger:
+            - trigger: state
+              entity_id: !input mosquito_save_sensor
+            - trigger: state
+              entity_id: binary_sensor.sun_is_down
+              to: "on"
+          timeout:
+            # Selbstheilung: bewusst kurz (5 Min) statt 1h. retry.action läuft
+            # nicht-blockierend im Hintergrund – schlägt eine Entität (z.B.
+            # eine WLAN-Steckdose mit kurzem Verbindungsabbruch) trotz aller
+            # retries endgültig fehl, bemerkt dieses Skript das sonst nicht,
+            # da es nur auf den NÄCHSTEN Sensor-Trigger wartet. Bleibt das
+            # Fenster z.B. dauerhaft offen, kommt sonst nie wieder ein Trigger
+            # und der Switch bleibt im falschen Zustand hängen (genau das
+            # Leuchtturm-Problem vom 07.08.). Mit 5-Minuten-Timeout wird der
+            # Soll-/Ist-Abgleich unten spätestens alle 5 Min neu ausgeführt,
+            # auch ohne frischen Trigger – ein zuvor fehlgeschlagener
+            # retry.action-Versuch wird dann automatisch wiederholt.
+            #
+            # WICHTIG (asymmetrisch, siehe unten bei "Reagiere auf neuen
+            # Zustand"): dieser Timeout-Poll darf Geräte zwar automatisch
+            # AUSSCHALTEN (Leuchtturm-Fall), aber NICHT automatisch
+            # EINSCHALTEN bzw. die Licht-Helligkeit neu setzen – sonst würde
+            # er ein manuelles Eingreifen (z.B. Licht von Hand aus, weil das
+            # Baby schläft) nach spätestens 5 Minuten wieder rückgängig
+            # machen.
+            #
+            # Bewusst KEIN zusätzlicher state-Trigger direkt auf die Switches:
+            # würde entity_id als Template im Trigger benötigen (von
+            # wait_for_trigger nicht unterstützt), und selbst mit einem
+            # template-Trigger + ausreichend langem for: bräuchte es min.
+            # genauso lang wie das retry.action-Backoff-Fenster (~4:15) –
+            # sonst storniert ein zu früher Re-Trigger (retry_id = entity_id)
+            # den noch laufenden retry.action-Zyklus, bevor er die höheren
+            # Backoff-Stufen erreicht. Kein Zeitgewinn gegenüber dem 5-Min-Poll,
+            # nur mehr Komplexität.
+            minutes: 5
+          # continue_on_timeout: true, damit nach einem Timeout die
+          # while-Bedingung neu geprüft und der Soll-/Ist-Abgleich unten
+          # trotzdem durchlaufen wird, statt das ganze Skript abzubrechen.
+          continue_on_timeout: true
+
+        - alias: "Reagiere auf neuen Zustand"
+          if:
+            - condition: state
+              entity_id: !input mosquito_save_sensor
+              state: "off"
+            - condition: state
+              entity_id: binary_sensor.sun_is_down
+              state: "on"
+          then:
+            # ASYMMETRISCHE Selbstheilung: das "Einschalten" darf NUR bei
+            # einem echten Sensor-Trigger laufen (wait.completed == true),
+            # NICHT beim reinen 5-Min-Timeout-Poll (wait.completed == false).
+            # Sonst würde die Selbstheilung z.B. manuell gedimmtes/ausge-
+            # schaltetes Licht (Baby schläft) spätestens nach 5 Minuten
+            # wieder auf die Standard-Helligkeit zurücksetzen. Beim
+            # "Ausschalten" (else-Zweig unten) gibt es diese Einschränkung
+            # bewusst NICHT – dort soll die Selbstheilung immer greifen
+            # (Leuchtturm-Fall: Gerät bleibt fälschlich an).
+            - alias: "Geräte einschalten nur bei echtem Sensor-Trigger (nicht bei Selbstheilung-Timeout)"
+              if:
+                - condition: template
+                  value_template: "{{ wait.completed }}"
+              then:
+                - alias: "Geräte einschalten"
+                  parallel:
+                    - alias: "Switches an (falls konfiguriert)"
+                      if:
+                        - condition: template
+                          value_template: "{{ _switches_on | length > 0 }}"
+                      then:
+                        # retries: 9 + on_error – siehe Kommentar bei Schritt 3b.
+                        - action: retry.action
+                          target:
+                            entity_id: "{{ _switches_on }}"
+                          data:
+                            action: switch.turn_on
+                            expected_state: "on"
+                            retries: 9
+                            on_error:
+                              - alias: "Benachrichtigung: Schalten endgültig fehlgeschlagen"
+                                action: script.turn_on
+                                target:
+                                  entity_id: script.notification_send
+                                data:
+                                  variables:
+                                    notify_title: "⚠️ Gerät reagiert nicht"
+                                    notify_message: >-
+                                      {{ state_attr(entity_id, 'friendly_name') or entity_id }}
+                                      konnte trotz mehrerer Versuche nicht
+                                      {{ 'ausgeschaltet' if action == 'switch.turn_off' else 'eingeschaltet' }}
+                                      werden (Skript: {{ this.attributes.friendly_name }}).
+                                    notify_tag: "retry_fehler_{{ entity_id | replace('.', '_') }}"
+                    - alias: "Licht an (falls konfiguriert)"
+                      if:
+                        - condition: template
+                          value_template: "{{ _light_entity != '' }}"
+                      then:
+                        # Siehe Kommentar in Schritt 3b: bewusst ohne expected_state.
+                        - action: retry.action
+                          target:
+                            entity_id: "{{ _light_entity }}"
+                          data:
+                            action: light.turn_on
+                            brightness_pct: "{{ _light_brightness_pct }}"
+                            color_temp_kelvin: "{{ _light_color_temp_kelvin }}"
+          else:
+            - alias: "Geräte ausschalten"
+              parallel:
+                - alias: "Switches aus (falls konfiguriert)"
+                  if:
+                    - condition: template
+                      value_template: "{{ _switches_on | length > 0 }}"
+                  then:
+                    # retries: 9 + on_error – siehe Kommentar bei Schritt 3b.
+                    # Genau dieser Aufruf war am 07.08. betroffen:
+                    # switch.leuchtturm ist während der Retry-Versuche kurz
+                    # "unavailable" geworden und danach mit altem Zustand
+                    # ("on") zurückgekommen, ohne dass "off" je bestätigt
+                    # wurde. Dieser Zweig läuft bewusst IMMER (auch beim
+                    # reinen Timeout-Poll, ohne wait.completed-Prüfung) –
+                    # das ist die eigentliche Absicherung gegen genau diesen
+                    # Fall.
+                    - action: retry.action
+                      target:
+                        entity_id: "{{ _switches_on }}"
+                      data:
+                        action: switch.turn_off
+                        expected_state: "off"
+                        retries: 9
+                        on_error:
+                          - alias: "Benachrichtigung: Schalten endgültig fehlgeschlagen"
+                            action: script.turn_on
+                            target:
+                              entity_id: script.notification_send
+                            data:
+                              variables:
+                                notify_title: "⚠️ Gerät reagiert nicht"
+                                notify_message: >-
+                                  {{ state_attr(entity_id, 'friendly_name') or entity_id }}
+                                  konnte trotz mehrerer Versuche nicht
+                                  {{ 'ausgeschaltet' if action == 'switch.turn_off' else 'eingeschaltet' }}
+                                  werden (Skript: {{ this.attributes.friendly_name }}).
+                                notify_tag: "retry_fehler_{{ entity_id | replace('.', '_') }}"
+                - alias: "Licht aus (falls konfiguriert)"
+                  if:
+                    - condition: template
+                      value_template: "{{ _light_entity != '' }}"
+                  then:
+                    # turn_off mit expected_state: "off" ist unkritisch –
+                    # "aus" ist "aus", kein Attribut-Problem. retry stellt
+                    # sicher, dass das Licht wirklich aus ist. Läuft bewusst
+                    # IMMER (auch beim reinen Timeout-Poll) – ein Licht, das
+                    # aus sein soll, aber fälschlich an ist, wird so
+                    # zuverlässig korrigiert.
+                    - action: retry.action
+                      target:
+                        entity_id: "{{ _light_entity }}"
+                      data:
+                        action: light.turn_off
+                        expected_state: "off"
+
+mode: single
+icon: mdi:lightbulb-multiple-outline
+
+fields:
+  alexa_answer:
+    name: Antwort Alexa
+    description: Soll Alexa eine Bestätigung ausgeben?
+    default: true
+    selector:
+      boolean:

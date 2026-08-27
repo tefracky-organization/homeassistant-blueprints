@@ -1,0 +1,148 @@
+blueprint:blueprint:
+  source_url: "https://raw.githubusercontent.com/tefracky/homeassistant-blueprints/refs/heads/blueprints/scripts/zimmer_nacht_aus.yaml"
+  name: Zimmer Nacht aus
+  description: >
+    Schaltet alle Geräte eines Zimmers nach dem Nacht-Modus aus.
+    Stoppt zuerst das zugehörige zimmer_nacht_an-Skript (verhindert, dass dessen
+    Warteschleife bei der nächsten Fensteränderung die Geräte wieder einschaltet),
+    schaltet dann optional ein Licht-sanft-aus-Skript, Haupt-Steckdose,
+    weitere Switches und optional das Ventilatorlicht aus (continue_on_error).
+    Für Räume ohne Licht/Haupt-Steckdose (z.B. Lego- oder Arbeitszimmer) einfach
+    light_aus_script und main_switch leer lassen und alle Switches über
+    extra_switches führen.
+  domain: script
+  input:
+    nacht_an_script:
+      name: Zugehöriges Nacht-an-Skript
+      description: >
+        Das zimmer_nacht_an-Skript dieses Raums (z.B. script.schlafzimmer_an).
+        Wird als allererste Aktion per script.turn_off gestoppt, damit dessen
+        Warteschleife nach dem Ausschalten nicht erneut Geräte einschaltet.
+      selector:
+        entity:
+          domain: script
+
+    light_aus_script:
+      name: Licht-aus-Skript (optional)
+      description: >
+        Das *licht_aus-Skript für diesen Raum (z.B. script.schlafzimmerlicht_aus).
+        Leer lassen wenn der Raum kein gesteuertes Licht hat.
+      default: ""
+      selector:
+        entity:
+          domain: script
+
+    main_switch:
+      name: Haupt-Steckdose (optional)
+      description: >
+        Die Haupt-Steckdose des Raums (wird zuletzt ausgeschaltet).
+        Leer lassen wenn nicht benötigt – dann einfach alle Switches über
+        extra_switches ausschalten.
+      default: ""
+      selector:
+        entity:
+          domain: switch
+
+    extra_switches:
+      name: Weitere Switches (optional)
+      description: Weitere Switches, die ausgeschaltet werden (z.B. Deko-Leuchten).
+      default: []
+      selector:
+        entity:
+          domain: switch
+          multiple: true
+
+    fan_light:
+      name: Ventilatorlicht (optional)
+      description: >
+        Licht des Deckenventilators. Wird mit continue_on_error ausgeschaltet,
+        da es ggf. nicht immer verfügbar ist.
+      default: ""
+      selector:
+        entity:
+          domain: light
+
+sequence:
+  # ── 1. Variablen ──────────────────────────────────────────────────────────
+  - alias: "Variablen setzen"
+    variables:
+      alexa_answer_parsed: "{{ alexa_answer if alexa_answer is defined else true }}"
+      _light_aus_script: !input light_aus_script
+      _main_switch: !input main_switch
+      _fan_light: !input fan_light
+      _extra_switches: !input extra_switches
+
+  # ── 2. Nacht-an-Skript stoppen ────────────────────────────────────────────
+  # Muss als erstes passieren, damit dessen Warteschleife (wait_for_trigger auf
+  # Fensteränderung) nicht nach dem Ausschalten erneut Geräte einschaltet.
+  - alias: "Nacht-an-Skript stoppen"
+    action: script.turn_off
+    target:
+      entity_id: !input nacht_an_script
+
+  # ── 3. Alexa-Bestätigung mit kurzer Verzögerung ───────────────────────────
+  - alias: "Alexa-Bestätigung mit kurzer Verzögerung"
+    if:
+      - condition: template
+        value_template: "{{ alexa_answer_parsed == true }}"
+    then:
+      - delay:
+          seconds: 2
+      - action: script.turn_on
+        target:
+          entity_id: script.speak_last_alexa
+        data:
+          variables:
+            message: "{{ this.attributes.friendly_name }}"
+
+  # ── 4. Licht sanft ausschalten (falls konfiguriert) ───────────────────────
+  - alias: "Licht sanft ausschalten (falls konfiguriert)"
+    if:
+      - condition: template
+        value_template: "{{ _light_aus_script != '' }}"
+    then:
+      - action: script.turn_on
+        target:
+          entity_id: "{{ _light_aus_script }}"
+
+  # ── 5. Haupt-Steckdose ausschalten (falls konfiguriert) ───────────────────
+  - alias: "Haupt-Steckdose ausschalten (falls konfiguriert)"
+    if:
+      - condition: template
+        value_template: "{{ _main_switch != '' }}"
+    then:
+      - action: switch.turn_off
+        target:
+          entity_id: "{{ _main_switch }}"
+
+  - alias: "Deko-Switches ausschalten (falls konfiguriert)"
+    if:
+      - condition: template
+        value_template: "{{ _extra_switches | length > 0 }}"
+    then:
+      - action: switch.turn_off
+        target:
+          entity_id: "{{ _extra_switches }}"
+
+  # ── 6. Ventilatorlicht ausschalten (optional, continue_on_error) ──────────
+  - alias: "Ventilatorlicht ausschalten (falls konfiguriert)"
+    if:
+      - condition: template
+        value_template: "{{ _fan_light != '' }}"
+    then:
+      - action: light.turn_off
+        target:
+          entity_id: "{{ _fan_light }}"
+        continue_on_error: true
+
+mode: single
+max_exceeded: silent
+icon: mdi:lightbulb-multiple-off-outline
+
+fields:
+  alexa_answer:
+    name: Antwort Alexa
+    description: Soll Alexa eine Bestätigung ausgeben?
+    default: true
+    selector:
+      boolean:
