@@ -4,21 +4,40 @@ blueprint:
   description: >
     # 📢 Benachrichtigungen
 
+    ## **Version 1.11**
+
+    - 🧹 **Modernisierte Syntax**
+      - Trigger `platform: event` → `trigger: event`, Aufrufe `service:` → `action:`.
+      - Top-Level `condition:`/`action:` → `conditions:`/`actions:`.
+      - `homeassistant: min_version: "2024.10.0"` ist jetzt tatsächlich im Blueprint-Header hinterlegt.
+
+    - 🐞 **Bugfix: Bedingungen für Endzustand**
+      - `clear_conditions` werden jetzt beim Lösch-Trigger ausgewertet. Sind sie nicht erfüllt, wird die Benachrichtigung nicht gelöscht – und es wird auch keine neue Benachrichtigung gesendet. Leere Liste = immer erfüllt.
+
+    - 🛡️ **Lösch-Trigger ohne Pflicht-ID**
+      - Lösch-Trigger werden jetzt zusätzlich über ihre Position (`trigger.idx`) erkannt. Die Angabe von `id: clear_notification_trigger` ist nicht mehr nötig, wird aber weiterhin unterstützt.
+      - Behebt, dass Endzustands-Trigger ohne ID stumm als normaler Trigger behandelt wurden und die Benachrichtigung nie automatisch gelöscht wurde.
+      - ⚠️ Templates in den Trigger-Auslösern sollten fehlertolerant sein (z. B. `| float(0)` statt `| float`), da sie zur Ermittlung der Trigger-Anzahl bei jedem Lauf mitgerendert werden.
+
+    - ✂️ **Aufräumen**
+      - Ungenutzte Variable `notify_devices` (fest verdrahtete Geräte-IDs) entfernt – die Geräteauswahl erfolgt in `script.notification_send`.
+      - Inputs, Namen und Defaults unverändert – bestehende Automationen müssen nicht angepasst werden.
+
     ## **Version 1.10**
 
     - 🛡️ **Robustheit und Fehlerbehebung**
-      - Es wurden Fallbacks und Standardwerte für mehrere optionale Benachrichtigungsvariablen (`notify_chronometer`, `notify_when`, `notify_url` etc.) hinzugefügt [attached_file:1].
-      - Dies behebt Template-Warnungen im Home Assistant-Protokoll, die auftreten konnten, wenn diese erweiterten Optionen nicht explizit in der Automation konfiguriert wurden [attached_file:1].
+      - Es wurden Fallbacks und Standardwerte für mehrere optionale Benachrichtigungsvariablen (`notify_chronometer`, `notify_when`, `notify_url` etc.) hinzugefügt.
+      - Dies behebt Template-Warnungen im Home Assistant-Protokoll, die auftreten konnten, wenn diese erweiterten Optionen nicht explizit in der Automation konfiguriert wurden.
 
     - ➕ **Neue Benachrichtigungsoptionen hinzugefügt**
-      - Die Blueprint unterstützt nun vier neue, optionale Felder zur besseren Steuerung von Android-Benachrichtigungen [attached_file:1]:
+      - Die Blueprint unterstützt nun vier neue, optionale Felder zur besseren Steuerung von Android-Benachrichtigungen:
         - **`notify_chronometer`**: Zeigt einen Chronometer in der Benachrichtigung an.
         - **`notify_when`**: Fügt einen Zeitstempel hinzu.
         - **`notify_when_relative`**: Ermöglicht relative Zeitangaben.
         - **`notify_url`**: Definiert eine URL, die beim Klick auf die Benachrichtigung geöffnet wird.
 
     - ⚙️ **Optimierte Skript-Übergabe**
-      - Die neuen, optionalen Variablen werden nun korrekt an das zentrale `script.notification_send` übergeben, um die Kompatibilität sicherzustellen und die neuen Funktionen zu aktivieren [attached_file:1].
+      - Die neuen, optionalen Variablen werden nun korrekt an das zentrale `script.notification_send` übergeben, um die Kompatibilität sicherzustellen und die neuen Funktionen zu aktivieren.
 
     ## **Version 1.9**
 
@@ -169,6 +188,8 @@ blueprint:
       - **FAQ & Hilfe:** [Zum Community-Thread](https://community.home-assistant.io/t/notifications-announcements/728100/2?u=blacky)
 
   domain: automation
+  homeassistant:
+    min_version: "2024.10.0"
   input:
     trigger_section:
       name: "🧲 Trigger & Endzustand"
@@ -188,7 +209,8 @@ blueprint:
           description: >
             Lege optional Trigger für das **automatische Löschen** der Benachrichtigung fest.
             Z. B. wenn eine Entität wieder den Zustand *OK* erreicht.
-            Es muss zwingend **id: clear_notification_trigger** angegeben werden.
+            Alle hier eingetragenen Trigger werden automatisch als Lösch-Trigger erkannt
+            (ab Version 1.11 ist **keine** `id: clear_notification_trigger` mehr nötig – sie wird aber weiterhin unterstützt).
           default: []
           selector:
             trigger:
@@ -442,34 +464,26 @@ variables:
   global_conditions: !input global_conditions
   trigger_conditions: !input trigger_conditions
   clear_conditions: !input clear_conditions
+  dynamic_trigger_list: !input dynamic_trigger
 
-  notify_devices: >-
-    {% set devices = [
-      '30d663ef8b06c87a5bdb80a56af74b15',
-      '0cfbf22f9dc76ecf11f78017669b1d51'
-    ] %}
-    {% if send_to_work | default(false) %}
-      {{ devices + [
-      'e0f19df8be795d8d5867ccf822025697',
-      '170f72bbcf6e90b79e776d8511fc2419'
-      ] }}
-    {% else %}
-      {{ devices }}
-    {% endif %}
-    {#
-    {% if send_to_car | default(false) %}
-      {{ devices + ['7b4588bc469f471e30087c5757f2ebf4'] }}
-    {% else %}
-      {{ devices }}
-    {% endif %}
-    #}
+  # Lösch-Trigger erkennen: entweder per ID (Abwärtskompatibilität) oder per Position.
+  # HA faltet "- triggers: !input …" vor der Indexvergabe flach zusammen, d. h.
+  # Index 0..n-1 = dynamic_trigger, n/n+1 = Button-Events, ab n+2 = clear_trigger.
+  # Hinweis: HA rendert Templates in dynamic_trigger_list bei jedem Lauf mit – Templates in
+  # den Triggern daher fehlertolerant schreiben (z. B. "| float(0)" statt "| float").
+  is_clear_trigger: >-
+    {% set dyn = dynamic_trigger_list or [] %}
+    {% set dyn = [dyn] if dyn is mapping else dyn %}
+    {% set clear_start = (dyn | length) + 2 %}
+    {{ trigger.id | default('') == 'clear_notification_trigger'
+       or (trigger.idx | default(-1) | int(-1)) >= clear_start }}
 
 triggers:
   # Faltet alle Einträge aus dynamic_trigger an den Anfang deiner Triggerliste
   - triggers: !input dynamic_trigger
 
-  # Feste Button‑Events
-  - platform: event
+  # Feste Button‑Events – Anzahl (2) muss zu "clear_start" in is_clear_trigger passen!
+  - trigger: event
     event_type: mobile_app_notification_action
     id: action_button_app
   - trigger: event
@@ -479,9 +493,9 @@ triggers:
   # Faltet alle Einträge aus clear_trigger ans Ende der Liste
   - triggers: !input clear_trigger
 
-condition: !input global_conditions
+conditions: !input global_conditions
 
-action:
+actions:
   - choose:
       - alias: "Prüfe, ob Aktions-Button gedrückt wurde"
         conditions:
@@ -491,7 +505,7 @@ action:
               - action_button_telegram
         sequence:
           - alias: "Unterskript aufrufen und action/tag zurückgeben"
-            service: script.benachrichtigung_event_daten_auslesen
+            action: script.benachrichtigung_event_daten_auslesen
             data:
               event_data: "{{ trigger.event.data }}"
             response_variable: result
@@ -526,16 +540,21 @@ action:
                       notify_tag: "{{ notify_tag }}"
       - alias: "Prüfe, ob Endzustand erreicht wurde (Lösch-Trigger)"
         conditions:
-          - condition: trigger
-            id: clear_notification_trigger
+          - condition: template
+            value_template: "{{ is_clear_trigger }}"
         sequence:
+          # Bewusst in der Sequenz statt in "conditions": sonst fiele ein Lösch-Trigger mit
+          # unerfüllten clear_conditions in den Hauptzweig und würde eine Benachrichtigung senden.
+          - alias: "Bedingungen für Endzustand prüfen"
+            condition: and
+            conditions: !input clear_conditions
           - action: script.notification_delete
             data:
               notify_tag: "{{ notify_tag }}"
       - alias: "Prüfe Trigger-Bedingungen für Hauptbenachrichtigung"
         conditions: !input trigger_conditions
         sequence:
-          - service: script.notification_send
+          - action: script.notification_send
             data:
               notify_title: !input notify_title
               notify_message: !input notify_message
