@@ -6,7 +6,7 @@
 #
 
 self_file="$0"
-self_source_url="https://raw.githubusercontent.com/tefracky/homeassistant-blueprints/refs/heads/blueprints/blueprints_update.sh"
+self_source_url="https://raw.githubusercontent.com/tefracky-organization/homeassistant-blueprints/refs/heads/blueprints/blueprints_update.sh"
 
 # defaults
 _do_update="false"
@@ -205,12 +205,15 @@ fi
 # Blueprints-Aktualisierung – Erkennen eines Force Push ohne externe Datei
 ###############################################################################
 # Bestimme das Blueprints-Verzeichnis
-if [ -d /blueprints/ ]; then
-    cd /blueprints/
+# (HA-Container: /config/blueprints; Skript liegt üblicherweise in /config/scripts/)
+if [ -d /config/blueprints/ ]; then
+    cd /config/blueprints/ || exit 1
 elif [ -d "$(dirname "$0")/../blueprints/" ]; then
-    cd "$(dirname "$0")/../config/blueprints/"
+    cd "$(dirname "$0")/../blueprints/" || exit 1
+elif [ -d /blueprints/ ]; then
+    cd /blueprints/ || exit 1
 elif [ -d /usr/share/hassio/homeassistant/blueprints/ ]; then
-    cd /usr/share/hassio/homeassistant/blueprints/
+    cd /usr/share/hassio/homeassistant/blueprints/ || exit 1
 else
     _blueprint_update_info "-! Blueprints-Verzeichnis nicht gefunden"
     exit 1
