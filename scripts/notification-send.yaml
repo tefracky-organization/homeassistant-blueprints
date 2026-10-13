@@ -11,6 +11,15 @@ blueprint:
     Die Geräte werden **im Blueprint** gepflegt (Standard- und Arbeitsgeräte), beim Aufruf kann über
     das Feld `notify_devices` eine eigene Geräteliste übergeben werden.
 
+    ## **Version 2.1**
+
+    - 🎨 **Eigenes Icon und Icon-Farbe (nur Android)**
+      - Neue optionale Felder `notify_icon` (z. B. `mdi:garage-alert`) und `notify_icon_color`
+        (RGB-Liste wie `[255, 152, 0]` oder Hex-String wie `#ff9800`). Ohne Angabe bleibt das HA-Standard-Icon.
+
+    - 🔍 **Mehr Traces**
+      - `trace: stored_traces: 20`, damit bei vielen Aufrufern ältere Läufe nachvollziehbar bleiben.
+
     ## **Version 2.0**
 
     - 🔄 **Neu aufgebaut als Abbild des produktiven `script.notification_send`**
@@ -71,6 +80,9 @@ blueprint:
               integration: telegram_bot
 
 mode: queued
+
+trace:
+  stored_traces: 20
 
 fields:
   notify_title:
@@ -227,6 +239,18 @@ fields:
     required: false
     selector:
       boolean: {}
+  notify_icon:
+    name: Icon (optional, nur Android)
+    description: Ersetzt das Home-Assistant-Icon in der Benachrichtigung, z. B. mdi:garage-alert.
+    required: false
+    selector:
+      icon: {}
+  notify_icon_color:
+    name: Icon-Farbe (optional, nur Android)
+    description: RGB-Liste (z. B. [255, 152, 0]) oder Hex-String (z. B. "#ff9800").
+    required: false
+    selector:
+      color_rgb: {}
 
 sequence:
   # Blueprint-Inputs binden (eigene Namen, damit sie nicht mit Aufruf-Feldern kollidieren)
@@ -248,6 +272,8 @@ sequence:
       max_progress: "{{ max_progress | default(1) }}"
       notify_channel: "{{ notify_channel | default('') }}"
       notify_persistent: "{{ notify_persistent | default(true) }}"
+      notify_icon: "{{ notify_icon | default('') }}"
+      notify_icon_color: "{{ notify_icon_color | default('') }}"
       device_message_data: |-
         {% set message = namespace(data={}) %}  {% set actions = [] %}
         {% set message.data = message.data | combine({'car_ui': true}) %}
@@ -297,6 +323,15 @@ sequence:
         {% endif %}
         {% if notify_url != "" %}
           {% set message.data = message.data | combine({'clickAction': notify_url}) %}
+        {% endif %}
+        {# Eigenes Icon + Farbe (Android); Farbe als [r, g, b] oder "#rrggbb" #}
+        {% if notify_icon %}
+          {% set message.data = message.data | combine({'notification_icon': notify_icon}) %}
+        {% endif %}
+        {% if notify_icon_color is string and notify_icon_color.startswith('#') %}
+          {% set message.data = message.data | combine({'color': notify_icon_color}) %}
+        {% elif notify_icon_color is sequence and notify_icon_color is not string and notify_icon_color | length == 3 %}
+          {% set message.data = message.data | combine({'color': '#%02x%02x%02x' | format(notify_icon_color[0] | int(0), notify_icon_color[1] | int(0), notify_icon_color[2] | int(0))}) %}
         {% endif %}
         {{ message.data }}
       # Eigene Liste beim Aufruf > Standardgeräte (+ Arbeitsgeräte bei send_to_work)
