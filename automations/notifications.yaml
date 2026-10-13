@@ -14,10 +14,11 @@ blueprint:
     - 🐞 **Bugfix: Bedingungen für Endzustand**
       - `clear_conditions` werden jetzt beim Lösch-Trigger ausgewertet. Sind sie nicht erfüllt, wird die Benachrichtigung nicht gelöscht – und es wird auch keine neue Benachrichtigung gesendet. Leere Liste = immer erfüllt.
 
-    - 🛡️ **Lösch-Trigger ohne Pflicht-ID**
-      - Lösch-Trigger werden jetzt zusätzlich über ihre Position (`trigger.idx`) erkannt. Die Angabe von `id: clear_notification_trigger` ist nicht mehr nötig, wird aber weiterhin unterstützt.
-      - Behebt, dass Endzustands-Trigger ohne ID stumm als normaler Trigger behandelt wurden und die Benachrichtigung nie automatisch gelöscht wurde.
-      - ⚠️ Templates in den Trigger-Auslösern sollten fehlertolerant sein (z. B. `| float(0)` statt `| float`), da sie zur Ermittlung der Trigger-Anzahl bei jedem Lauf mitgerendert werden.
+    - ⚠️ **Pflicht-ID bei Lösch-Triggern deutlicher dokumentiert**
+      - Die Beschreibung von „Endzustand“ weist jetzt mit Beispiel-YAML darauf hin, dass jeder Lösch-Trigger `id: clear_notification_trigger` braucht. Ohne ID läuft der Trigger stumm in den Zweig „Trigger-Bedingungen“ und die Benachrichtigung wird nie automatisch gelöscht.
+
+    - 📝 **Input-Beschreibungen aktualisiert**
+      - `send_to_car` und `send_to_work` beschreiben jetzt das tatsächliche Verhalten von `script.notification_send` (keine fest verdrahteten Geräte-IDs mehr im Text).
 
     - ✂️ **Aufräumen**
       - Ungenutzte Variable `notify_devices` (fest verdrahtete Geräte-IDs) entfernt – die Geräteauswahl erfolgt in `script.notification_send`.
@@ -206,11 +207,22 @@ blueprint:
             trigger:
         clear_trigger:
           name: Endzustand (optional)
-          description: >
+          description: |
             Lege optional Trigger für das **automatische Löschen** der Benachrichtigung fest.
             Z. B. wenn eine Entität wieder den Zustand *OK* erreicht.
-            Alle hier eingetragenen Trigger werden automatisch als Lösch-Trigger erkannt
-            (ab Version 1.11 ist **keine** `id: clear_notification_trigger` mehr nötig – sie wird aber weiterhin unterstützt).
+
+            ⚠️ **Wichtig:** Jeder Trigger hier braucht zwingend **`id: clear_notification_trigger`**
+            (im UI: Trigger → ⋮ → „Trigger-ID bearbeiten“). Ohne ID wird der Trigger wie ein normaler
+            Auslöser behandelt und die Benachrichtigung **nie automatisch gelöscht**.
+
+            Beispiel:
+
+            ```yaml
+            - trigger: state
+              entity_id: cover.garagentor
+              to: closed
+              id: clear_notification_trigger
+            ```
           default: []
           selector:
             trigger:
@@ -286,15 +298,16 @@ blueprint:
         send_to_car:
           name: "Auto-Benachrichtigung aktivieren"
           description: >
-            Wenn aktiviert (Standard: false) wird das Gerät 
-            7b4588bc469f471e30087c5757f2ebf4 (EOS) in die Benachrichtigungsliste aufgenommen.
+            Aktuell **ohne Wirkung**: `script.notification_send` wertet diesen Wert nicht mehr aus
+            (Android-Auto-Darstellung über `car_ui` ist dort immer aktiv). Nur aus Kompatibilitätsgründen vorhanden.
           default: false
           selector:
             boolean:
         send_to_work:
           name: "Arbeits-Benachrichtigung aktivieren"
           description: >
-            Wenn aktiviert (Standard: false) werden die Geräte e0f19df8be795d8d5867ccf822025697 (Oliver Handy Arbeit) und 170f72bbcf6e90b79e776d8511fc2419 (Tina Tablet Arbeit) in die Benachrichtigungsliste aufgenommen.
+            Wenn aktiviert (Standard: false), nimmt `script.notification_send` zusätzlich die Arbeitsgeräte
+            in die Benachrichtigungsliste auf. Die Geräteliste wird zentral im Skript gepflegt.
           default: false
           selector:
             boolean:
@@ -464,25 +477,12 @@ variables:
   global_conditions: !input global_conditions
   trigger_conditions: !input trigger_conditions
   clear_conditions: !input clear_conditions
-  dynamic_trigger_list: !input dynamic_trigger
-
-  # Lösch-Trigger erkennen: entweder per ID (Abwärtskompatibilität) oder per Position.
-  # HA faltet "- triggers: !input …" vor der Indexvergabe flach zusammen, d. h.
-  # Index 0..n-1 = dynamic_trigger, n/n+1 = Button-Events, ab n+2 = clear_trigger.
-  # Hinweis: HA rendert Templates in dynamic_trigger_list bei jedem Lauf mit – Templates in
-  # den Triggern daher fehlertolerant schreiben (z. B. "| float(0)" statt "| float").
-  is_clear_trigger: >-
-    {% set dyn = dynamic_trigger_list or [] %}
-    {% set dyn = [dyn] if dyn is mapping else dyn %}
-    {% set clear_start = (dyn | length) + 2 %}
-    {{ trigger.id | default('') == 'clear_notification_trigger'
-       or (trigger.idx | default(-1) | int(-1)) >= clear_start }}
 
 triggers:
   # Faltet alle Einträge aus dynamic_trigger an den Anfang deiner Triggerliste
   - triggers: !input dynamic_trigger
 
-  # Feste Button‑Events – Anzahl (2) muss zu "clear_start" in is_clear_trigger passen!
+  # Feste Button‑Events
   - trigger: event
     event_type: mobile_app_notification_action
     id: action_button_app
@@ -540,8 +540,8 @@ actions:
                       notify_tag: "{{ notify_tag }}"
       - alias: "Prüfe, ob Endzustand erreicht wurde (Lösch-Trigger)"
         conditions:
-          - condition: template
-            value_template: "{{ is_clear_trigger }}"
+          - condition: trigger
+            id: clear_notification_trigger
         sequence:
           # Bewusst in der Sequenz statt in "conditions": sonst fiele ein Lösch-Trigger mit
           # unerfüllten clear_conditions in den Hauptzweig und würde eine Benachrichtigung senden.
