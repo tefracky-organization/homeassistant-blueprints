@@ -68,13 +68,65 @@ function _file_download {
 
     _blueprint_update_debug "-> download blueprint from ${source_url}"
     # Lade die Datei via curl herunter und speichere die HTTP-Header in einer Neben‑Datei
-    curl -s -D "${file}.headers" -o "${file}" "$(_fix_url "${source_url}")"
+    http_code=$(curl -s -L -D "${file}.headers" -o "${file}" -w '%{http_code}' "$(_fix_url "${source_url}")")
     curl_result=$?
     if [ "${curl_result}" != "0" ]; then
         _blueprint_update_info "! Fehler beim Download, Skript wird beendet..."
         _blueprint_update_newline
         exit 1
     fi
+    # Fehlerseiten (z. B. "404: Not Found") nie als Blueprint übernehmen
+    if [ "${http_code}" != "200" ]; then
+        _blueprint_update_info "-! HTTP ${http_code} beim Download von ${source_url}"
+        return 1
+    fi
+    return 0
+}
+
+# --- Prüfen, ob eine Datei ein gültiger Blueprint ist (YAML mit blueprint.domain) ---
+function _blueprint_valid {
+    local file="$1"
+    if ! command -v python3 >/dev/null 2>&1; then
+        _blueprint_update_debug "-! python3 nicht gefunden, YAML-Prüfung übersprungen"
+        return 0
+    fi
+    python3 - "${file}" <<'PY'
+import sys
+try:
+    import yaml
+except ImportError:
+    sys.exit(0)  # ohne PyYAML keine Prüfung möglich
+class Loader(yaml.SafeLoader):
+    pass
+# HA-Tags wie !input oder !secret nur akzeptieren, nicht auswerten
+Loader.add_multi_constructor("!", lambda loader, suffix, node: None)
+try:
+    with open(sys.argv[1], encoding="utf-8") as f:
+        data = yaml.load(f, Loader=Loader)
+except Exception:
+    sys.exit(1)
+ok = isinstance(data, dict) and isinstance(data.get("blueprint"), dict) and "domain" in data["blueprint"]
+sys.exit(0 if ok else 1)
+PY
+}
+
+# --- Code-Block aus einem Community-Beitrag (Discourse-JSON) extrahieren ---
+function _community_extract {
+    local file="$1"
+    command -v python3 >/dev/null 2>&1 || return 1
+    python3 - "${file}" <<'PY'
+import html, json, re, sys
+try:
+    with open(sys.argv[1], encoding="utf-8") as f:
+        cooked = json.load(f)["post_stream"]["posts"][0]["cooked"]
+except Exception:
+    sys.exit(1)
+match = re.search(r'<code class="lang-(?:yaml|auto)">(.*?)</code>', cooked, re.S)
+if not match:
+    sys.exit(1)
+with open(sys.argv[1], "w", encoding="utf-8") as f:
+    f.write(html.unescape(match.group(1)))
+PY
 }
 
 # --- Benachrichtigungen via Home Assistant (optional) ---
@@ -181,7 +233,10 @@ fi
 ###############################################################################
 if [ -z "${_file}" ] || [ "${_file}" == "self" ]; then
     file="self"
-    _file_download "${_tempfile}" "${self_source_url}"
+    if ! _file_download "${_tempfile}" "${self_source_url}" || ! bash -n "${_tempfile}"; then
+        _blueprint_update_info "-! Selbst-Update übersprungen (Download fehlgeschlagen oder ungültige Syntax)"
+        cp "${self_file}" "${_tempfile}"
+    fi
     self_diff=$(diff "${self_file}" "${_tempfile}")
     if [ -z "${self_diff}" ]; then
         _blueprint_update_info "-> self up-2-date"
@@ -260,18 +315,13 @@ find . -type f -name "*.yaml" -print0 | while read -d $'\0' file; do
             blueprint_source_url="${blueprint_source_url}.json"
             _blueprint_update_debug "-> korrigierte source_url: ${blueprint_source_url}"
         fi
-        _file_download "${_tempfile}" "${blueprint_source_url}"
+        if ! _file_download "${_tempfile}" "${blueprint_source_url}"; then
+            _blueprint_update_newline
+            continue
+        fi
 
-        # Suche im JSON nach einem Code-Block (lang-yaml oder lang-auto)
-        if grep -q '<code class="lang-yaml">' "${_tempfile}"; then
-            _blueprint_update_debug "-> gefundener lang-yaml Codeblock"
-            code=$(sed -e 's/.*<code class="lang-yaml">//' -e 's/<\/code>.*//' "${_tempfile}")
-            echo -e "${code}" > "${_tempfile}"
-        elif grep -q '<code class="lang-auto">' "${_tempfile}"; then
-            _blueprint_update_debug "-> gefundener lang-auto Codeblock"
-            code=$(sed -e 's/.*<code class="lang-auto">//' -e 's/<\/code>.*//' "${_tempfile}")
-            echo -e "${code}" > "${_tempfile}"
-        else
+        # Code-Block (lang-yaml oder lang-auto) aus dem JSON extrahieren
+        if ! _community_extract "${_tempfile}"; then
             _blueprint_update_info "-! Kein lang-yaml/auto Codeblock gefunden, überspringe..."
             _blueprint_update_newline
             continue
@@ -284,7 +334,18 @@ find . -type f -name "*.yaml" -print0 | while read -d $'\0' file; do
             _blueprint_update_newline
             # Hier könnte man auch einen forced update erzwingen
         fi
-        _file_download "${_tempfile}" "${blueprint_source_url}"
+        if ! _file_download "${_tempfile}" "${blueprint_source_url}"; then
+            _blueprint_update_newline
+            continue
+        fi
+    fi
+
+    # Nur gültige Blueprints übernehmen (schützt vor Fehlerseiten und kaputtem YAML)
+    if ! _blueprint_valid "${_tempfile}"; then
+        _blueprint_update_info "-! Download ist kein gültiger Blueprint, überspringe..."
+        _persistent_notification_create "$(basename "${file}")" "Update für $(basename "${file}") übersprungen: Download ist kein gültiger Blueprint"
+        _blueprint_update_newline
+        continue
     fi
 
     ############################################################################
