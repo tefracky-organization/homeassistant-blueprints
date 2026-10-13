@@ -17,12 +17,22 @@ blueprint:
     - ⚠️ **Pflicht-ID bei Lösch-Triggern deutlicher dokumentiert**
       - Die Beschreibung von „Endzustand“ weist jetzt mit Beispiel-YAML darauf hin, dass jeder Lösch-Trigger `id: clear_notification_trigger` braucht. Ohne ID läuft der Trigger stumm in den Zweig „Trigger-Bedingungen“ und die Benachrichtigung wird nie automatisch gelöscht.
 
-    - 📝 **Input-Beschreibungen aktualisiert**
-      - `send_to_car` und `send_to_work` beschreiben jetzt das tatsächliche Verhalten von `script.notification_send` (keine fest verdrahteten Geräte-IDs mehr im Text).
+    - ⏱️ **Chronometer & Zeitstempel repariert**
+      - `notify_chronometer` und `notify_when` werden jetzt in die Werte übersetzt, die `script.notification_send` erwartet (`aus`/`stoppuhr`/`countdown` bzw. ISO-Zeitstempel). Vorher hatte der Chronometer keine Wirkung und `notify_when: true` konnte das Skript abbrechen lassen.
+      - Neu: **Countdown-Dauer** (`notify_chronometer_duration`) – > 0 macht aus dem Chronometer einen Countdown.
+
+    - ➕ **Neue optionale Versand-Optionen** (aus `script.notification_send`)
+      - **Geräte** (`notify_devices`), **Android-Kanal** (`notify_channel`), **Automatisch ausblenden** (`notify_timeout`), **Persistente HA-Benachrichtigung** (`notify_persistent`).
+      - Neue Android-Option **Nur einmal benachrichtigen** (`alert_once`).
+      - Alle neuen Inputs haben Defaults, die dem bisherigen Verhalten entsprechen.
+
+    - 🗑️ **`send_to_car` entfernt**
+      - Hatte keine Wirkung mehr (`car_ui` ist im Skript immer aktiv). Bestehende Automationen mit diesem Input laufen unverändert weiter, Home Assistant ignoriert den überzähligen Wert.
+      - `send_to_work` beschreibt jetzt das tatsächliche Verhalten (keine fest verdrahteten Geräte-IDs mehr im Text).
 
     - ✂️ **Aufräumen**
       - Ungenutzte Variable `notify_devices` (fest verdrahtete Geräte-IDs) entfernt – die Geräteauswahl erfolgt in `script.notification_send`.
-      - Inputs, Namen und Defaults unverändert – bestehende Automationen müssen nicht angepasst werden.
+      - Bestehende Inputs, Namen und Defaults unverändert (außer `send_to_car`, s. o.) – bestehende Automationen müssen nicht angepasst werden.
 
     ## **Version 1.10**
 
@@ -252,6 +262,7 @@ blueprint:
             **Optionen für Android (Optional):**
             - **Hochpriorität**: Benachrichtigungen werden sofort zugestellt, um wichtige Meldungen umgehend zu übermitteln.
             - **Feste Benachrichtigung**: Wichtige Meldungen bleiben in der Benachrichtigungsleiste, bis sie aktiv entfernt werden.
+            - **Nur einmal benachrichtigen**: Bei Aktualisierung derselben Benachrichtigung kein erneuter Ton/Vibration.
             - **Benachrichtigungskanal**: Organisiert verschiedene Benachrichtigungseinstellungen (Töne, Vibration etc.).
               Diese Option wird immer genutzt und erfordert die Eingabe eines Kanalnamens.
           default: []
@@ -263,6 +274,8 @@ blueprint:
                   value: "high_priority"
                 - label: Feste Benachrichtigung
                   value: "sticky"
+                - label: Nur einmal benachrichtigen
+                  value: "alert_once"
         notify_tag:
           name: Benachrichtigungskanal – Android & Persistent
           description: >
@@ -273,19 +286,35 @@ blueprint:
             text:
         notify_chronometer:
           name: "Chronometer anzeigen"
-          description: "Zeigt einen Chronometer in der Benachrichtigung an (nur Android)."
+          description: >
+            Zeigt oben in der Benachrichtigung eine laufende Zeit an (nur Android).
+            Standard ist eine Stoppuhr ab dem Sendezeitpunkt; mit einer **Countdown-Dauer** > 0 wird daraus ein Countdown.
           default: false
           selector:
             boolean:
+        notify_chronometer_duration:
+          name: "Countdown-Dauer (Sekunden)"
+          description: >
+            Nur relevant, wenn „Chronometer anzeigen“ aktiv ist. 0 = Stoppuhr (zählt hoch),
+            > 0 = Countdown über diese Dauer (z. B. 1800 für 30 Minuten).
+          default: 0
+          selector:
+            number:
+              min: 0
+              max: 86400
+              unit_of_measurement: s
+              mode: box
         notify_when:
           name: "Zeitstempel anzeigen"
-          description: "Zeigt den Zeitstempel der Benachrichtigung an (nur Android)."
+          description: "Zeigt den Sendezeitpunkt als Zeitstempel in der Benachrichtigung an (nur Android). Wird ignoriert, wenn der Chronometer aktiv ist."
           default: false
           selector:
             boolean:
         notify_when_relative:
           name: "Relativer Zeitstempel"
-          description: "Zeigt einen relativen Zeitstempel an, z.B. 'in 5 minutes'. (nur Android)"
+          description: >
+            Relativer Zeitstempel in **Sekunden** (nur Android), wird unverändert an `script.notification_send` übergeben.
+            Leer oder 0 = aus. Wird ignoriert, wenn Chronometer oder Zeitstempel aktiv sind.
           default: ""
           selector:
             text:
@@ -295,20 +324,46 @@ blueprint:
           default: ""
           selector:
             text:
-        send_to_car:
-          name: "Auto-Benachrichtigung aktivieren"
-          description: >
-            Aktuell **ohne Wirkung**: `script.notification_send` wertet diesen Wert nicht mehr aus
-            (Android-Auto-Darstellung über `car_ui` ist dort immer aktiv). Nur aus Kompatibilitätsgründen vorhanden.
-          default: false
-          selector:
-            boolean:
         send_to_work:
           name: "Arbeits-Benachrichtigung aktivieren"
           description: >
             Wenn aktiviert (Standard: false), nimmt `script.notification_send` zusätzlich die Arbeitsgeräte
             in die Benachrichtigungsliste auf. Die Geräteliste wird zentral im Skript gepflegt.
+            Wird ignoriert, wenn unter „Geräte“ eine eigene Auswahl getroffen wurde.
           default: false
+          selector:
+            boolean:
+        notify_devices:
+          name: "Geräte (optional)"
+          description: >
+            Nur an diese Mobile-App-Geräte senden. Leer = Standardliste aus `script.notification_send`.
+          default: []
+          selector:
+            device:
+              multiple: true
+              filter:
+                - integration: mobile_app
+        notify_channel:
+          name: "Android-Kanal (optional)"
+          description: >
+            Eigener Android-Benachrichtigungskanal. Leer = wie der Benachrichtigungskanal/Tag (bisheriges Verhalten).
+          default: ""
+          selector:
+            text:
+        notify_timeout:
+          name: "Automatisch ausblenden nach (Sekunden)"
+          description: "Zeit, nach der die Benachrichtigung vom Handy verschwindet. 0 = bleibt stehen."
+          default: 0
+          selector:
+            number:
+              min: 0
+              max: 86400
+              unit_of_measurement: s
+              mode: box
+        notify_persistent:
+          name: "Persistente HA-Benachrichtigung"
+          description: "Zusätzlich eine persistente Benachrichtigung in Home Assistant anlegen."
+          default: true
           selector:
             boolean:
     action_settings:
@@ -462,8 +517,12 @@ variables:
   notify_when: !input notify_when
   notify_when_relative: !input notify_when_relative
   notify_url: !input notify_url
-  send_to_car: !input send_to_car
+  notify_chronometer_duration: !input notify_chronometer_duration
   send_to_work: !input send_to_work
+  notify_devices: !input notify_devices
+  notify_channel: !input notify_channel
+  notify_timeout: !input notify_timeout
+  notify_persistent: !input notify_persistent
   include_action_buttons: !input include_action_buttons
   action_button_1: !input action_button_1
   action_button_2: !input action_button_2
@@ -560,12 +619,19 @@ actions:
               notify_message: !input notify_message
               notify_data: !input notify_data
               notify_tag: !input notify_tag
-              notify_chronometer: !input notify_chronometer
-              notify_when: !input notify_when
-              notify_when_relative: !input notify_when_relative
+              # Boolean-Inputs auf die Werte übersetzen, die script.notification_send erwartet
+              notify_chronometer: >-
+                {{ ('countdown' if notify_chronometer_duration | int(0) > 0 else 'stoppuhr')
+                   if notify_chronometer else 'aus' }}
+              notify_chronometer_duration: "{{ notify_chronometer_duration | int(0) }}"
+              notify_when: "{{ now().isoformat() if notify_when else '' }}"
+              notify_when_relative: "{{ notify_when_relative | int(0) }}"
               notify_url: !input notify_url
-              send_to_car: !input send_to_car
               send_to_work: !input send_to_work
+              notify_devices: !input notify_devices
+              notify_channel: !input notify_channel
+              notify_timeout: !input notify_timeout
+              notify_persistent: !input notify_persistent
               action_button_delete: !input action_button_delete
               additional_message_actions: >
                 {% set actions = [] %}
