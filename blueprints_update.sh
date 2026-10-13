@@ -4,6 +4,10 @@
 # Es erkennt, ob bei einem push force die Remote-Versionen verändert wurden, indem es den
 # "Last-Modified"-Header auswertet – dieser wird in den Blueprint als Kommentar eingebettet.
 #
+# Optionale Sperrliste in blueprints_update.sh.conf (Pfade relativ zu /config/blueprints,
+# so wie "find" sie ausgibt):
+#   _blueprints_update_blacklist=("./automation/Blackshome/beispiel.yaml" "./script/foo/bar.yaml")
+#
 
 self_file="$0"
 self_source_url="https://raw.githubusercontent.com/tefracky-organization/homeassistant-blueprints/refs/heads/blueprints/blueprints_update.sh"
@@ -108,6 +112,17 @@ except Exception:
 ok = isinstance(data, dict) and isinstance(data.get("blueprint"), dict) and "domain" in data["blueprint"]
 sys.exit(0 if ok else 1)
 PY
+}
+
+# --- Prüfen, ob eine Datei auf der Sperrliste steht ---
+function _blueprint_blacklisted {
+    local element
+    for element in "${_blueprints_update_blacklist[@]}"; do
+        if [ "${element}" == "$1" ]; then
+            return 0
+        fi
+    done
+    return 1
 }
 
 # --- Code-Block aus einem Community-Beitrag (Discourse-JSON) extrahieren ---
@@ -283,6 +298,13 @@ find . -type f -name "*.yaml" -print0 | while read -d $'\0' file; do
 
     _blueprint_update_info "> ${file}"
 
+    # Sperrliste: diese Blueprints nie automatisch aktualisieren
+    if _blueprint_blacklisted "${file}"; then
+        _blueprint_update_info "-> steht auf der Sperrliste, überspringe"
+        _blueprint_update_newline
+        continue
+    fi
+
     # Lese den source_url Eintrag aus der Datei
     blueprint_source_url=$(grep '^ *source_url: ' "${file}" | sed -e "s/^ *source_url: *//" -e 's/"//g' -e "s/'//g")
     _blueprint_update_debug "-> source_url: ${blueprint_source_url}"
@@ -346,6 +368,21 @@ find . -type f -name "*.yaml" -print0 | while read -d $'\0' file; do
         _persistent_notification_create "$(basename "${file}")" "Update für $(basename "${file}") übersprungen: Download ist kein gültiger Blueprint"
         _blueprint_update_newline
         continue
+    fi
+
+    # Fehlt im Download die source_url (häufig bei Community-Beiträgen), die bisherige
+    # wieder einsetzen – sonst würde der Blueprint danach nie mehr aktualisiert
+    new_source_url=$(grep -m1 '^ *source_url: ' "${_tempfile}" | sed -e "s/^ *source_url: *//" -e 's/"//g' -e "s/'//g")
+    orig_source_url=$(grep -m1 '^ *source_url: ' "${file}" | sed -e "s/^ *source_url: *//" -e 's/"//g' -e "s/'//g")
+    if [ -z "${new_source_url}" ]; then
+        _blueprint_update_debug "-! source_url im Download fehlt, setze ${orig_source_url} wieder ein"
+        awk -v url="${orig_source_url}" '
+            !done && /^blueprint:[[:space:]]*$/ { print; print "  source_url: \"" url "\""; done = 1; next }
+            { print }
+        ' "${_tempfile}" > "${_tempfile}.new" && mv "${_tempfile}.new" "${_tempfile}"
+    elif [ "${new_source_url}" != "${orig_source_url}" ]; then
+        # Remote-Datei verweist auf eine andere Quelle (z. B. Repo umgezogen) – nur informieren
+        _blueprint_update_info "-! source_url geändert: ${orig_source_url} -> ${new_source_url}"
     fi
 
     ############################################################################
