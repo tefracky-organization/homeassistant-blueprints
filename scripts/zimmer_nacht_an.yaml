@@ -1,5 +1,5 @@
 blueprint:
-  source_url: "https://raw.githubusercontent.com/tefracky/homeassistant-blueprints/refs/heads/blueprints/scripts/zimmer_nacht_an.yaml"
+  source_url: "https://raw.githubusercontent.com/tefracky-organization/homeassistant-blueprints/refs/heads/blueprints/scripts/zimmer_nacht_an.yaml"
   name: Zimmer Nacht an
   description: >
     Schaltet Zimmergeräte für den Nacht-Modus ein. Logik:
@@ -200,11 +200,27 @@ sequence:
                       # on_error: läuft nur, wenn ALLE Retries für eine bestimmte
                       # Entität endgültig gescheitert sind (kein Race, da sequenziell
                       # NACH dem echten Scheitern – nicht wie ein externer Watcher,
-                      # der raten müsste). entity_id/action sind dann als Variablen
-                      # verfügbar und beziehen sich nur auf die tatsächlich
-                      # gescheiterte Entität. Die 5-Min-Selbstheilung (Schritt 5)
-                      # versucht trotzdem automatisch weiter – das hier ist reine
-                      # Sichtbarkeit per Push-Benachrichtigung.
+                      # der raten müsste).
+                      #
+                      # WICHTIG (Bug vom 06.09., betraf switch.karussell/taj_mahal):
+                      # entity_id/action, die retry.action laut eigener Doku für
+                      # on_error-Templates bereitstellt, sind hier NICHT nutzbar.
+                      # Home Assistant rendert das komplette data:-Feld dieses
+                      # retry.action-Aufrufs (inkl. des verschachtelten on_error)
+                      # EINMAL VORAB, bevor retry.action überhaupt läuft – zu dem
+                      # Zeitpunkt existiert die Variable entity_id noch gar nicht.
+                      # Das ließ den GESAMTEN Aufruf sofort mit "UndefinedError:
+                      # 'entity_id' is undefined" abstürzen, sodass switch.turn_on
+                      # nicht einmal für den ersten Versuch gesendet wurde – die
+                      # Switches blieben komplett aus, unabhängig vom eigentlichen
+                      # Retry-Ergebnis. Die Benachrichtigung unten verwendet daher
+                      # stattdessen nur die immer sicher verfügbaren Variablen
+                      # _switches_on und this (kein Bezug mehr auf die einzelne
+                      # tatsächlich gescheiterte Entität möglich).
+                      #
+                      # Die 5-Min-Selbstheilung (Schritt 5) versucht trotzdem
+                      # automatisch weiter – das hier ist reine Sichtbarkeit per
+                      # Push-Benachrichtigung.
                       - action: retry.action
                         target:
                           entity_id: "{{ _switches_on }}"
@@ -221,11 +237,10 @@ sequence:
                                 variables:
                                   notify_title: "⚠️ Gerät reagiert nicht"
                                   notify_message: >-
-                                    {{ state_attr(entity_id, 'friendly_name') or entity_id }}
-                                    konnte trotz mehrerer Versuche nicht
-                                    {{ 'ausgeschaltet' if action == 'switch.turn_off' else 'eingeschaltet' }}
-                                    werden (Skript: {{ this.attributes.friendly_name }}).
-                                  notify_tag: "retry_fehler_{{ entity_id | replace('.', '_') }}"
+                                    Mindestens einer dieser Switches ({{ _switches_on | join(', ') }})
+                                    konnte trotz mehrerer Versuche nicht eingeschaltet werden
+                                    (Skript: {{ this.attributes.friendly_name }}).
+                                  notify_tag: "retry_fehler_{{ this.entity_id | replace('.', '_') }}_switches_on"
                   - alias: "Licht an (falls konfiguriert)"
                     if:
                       - condition: template
@@ -360,11 +375,10 @@ sequence:
                                   variables:
                                     notify_title: "⚠️ Gerät reagiert nicht"
                                     notify_message: >-
-                                      {{ state_attr(entity_id, 'friendly_name') or entity_id }}
-                                      konnte trotz mehrerer Versuche nicht
-                                      {{ 'ausgeschaltet' if action == 'switch.turn_off' else 'eingeschaltet' }}
-                                      werden (Skript: {{ this.attributes.friendly_name }}).
-                                    notify_tag: "retry_fehler_{{ entity_id | replace('.', '_') }}"
+                                      Mindestens einer dieser Switches ({{ _switches_on | join(', ') }})
+                                      konnte trotz mehrerer Versuche nicht eingeschaltet werden
+                                      (Skript: {{ this.attributes.friendly_name }}).
+                                    notify_tag: "retry_fehler_{{ this.entity_id | replace('.', '_') }}_switches_on"
                     - alias: "Licht an (falls konfiguriert)"
                       if:
                         - condition: template
@@ -411,11 +425,10 @@ sequence:
                               variables:
                                 notify_title: "⚠️ Gerät reagiert nicht"
                                 notify_message: >-
-                                  {{ state_attr(entity_id, 'friendly_name') or entity_id }}
-                                  konnte trotz mehrerer Versuche nicht
-                                  {{ 'ausgeschaltet' if action == 'switch.turn_off' else 'eingeschaltet' }}
-                                  werden (Skript: {{ this.attributes.friendly_name }}).
-                                notify_tag: "retry_fehler_{{ entity_id | replace('.', '_') }}"
+                                  Mindestens einer dieser Switches ({{ _switches_on | join(', ') }})
+                                  konnte trotz mehrerer Versuche nicht ausgeschaltet werden
+                                  (Skript: {{ this.attributes.friendly_name }}).
+                                notify_tag: "retry_fehler_{{ this.entity_id | replace('.', '_') }}_switches_off"
                 - alias: "Licht aus (falls konfiguriert)"
                   if:
                     - condition: template
