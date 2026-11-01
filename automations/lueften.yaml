@@ -1,0 +1,399 @@
+blueprint:
+  source_url: "https://raw.githubusercontent.com/tefracky-organization/homeassistant-blueprints/refs/heads/blueprints/automations/lueften.yaml"
+  name: Lüftungs-Erinnerung
+  description: >
+    # 🌬️ Lüftungs-Erinnerung
+
+    **Version 1.0**
+
+
+    Meldet, wann in einem Raum gelüftet werden sollte, und räumt die Meldung wieder weg,
+    sobald die Luft besser ist oder ein Fenster geöffnet wurde.
+
+
+    **Auslöser (jeweils mit Verzögerung gegen kurze Spitzen):**
+
+    - **CO₂ / eCO₂ zu hoch** (z. B. > 1000 ppm). Ende der Meldung unter dem Rücksetz-Wert.
+
+    - **Luftfeuchte zu hoch** (z. B. > 65 %). Optional nur, wenn die Außenluft absolut
+      trockener ist als die Raumluft (Innen- und Außentemperatur plus Außenfeuchte nötig).
+      Sonst würde Lüften die Feuchte im Raum erhöhen.
+
+
+    **Bedingungen:**
+
+    - Alle gewählten Fensterkontakte müssen geschlossen sein (keine Meldung bei offenem Fenster).
+
+    - Optional: Alle „Aktiv-Sensoren“ müssen `on` sein (z. B. `binary_sensor.awake`) und
+      mindestens ein „Anwesenheits-Sensor“ muss `on` sein (z. B. Oliver/Tina zu Hause).
+
+
+    **Neuprüfung:** Sobald ein Aktiv- oder Anwesenheits-Sensor auf `on` wechselt (z. B. Aufwachen,
+    Heimkommen), werden die aktuellen Werte geprüft. So gibt es auch dann eine Meldung, wenn der Wert
+    schon in der Nacht über die Schwelle stieg.
+
+
+    **Ende der Meldung:** Wert unter dem Rücksetz-Wert, oder ein Fenster wird geöffnet.
+
+
+    **Hinweis zu eCO₂:** Selbstbau-Sensoren mit VOC-Chip liefern berechnete Werte, die bei Kochen,
+    Reinigern oder Parfüm ansteigen. Dort die Schwellen an die eigenen Werte anpassen. Für
+    feste Schwellen (1000 ppm) eignen sich Sensoren mit echter CO₂-Messung (NDIR, z. B. Ikea Alpstuga, SCD40).
+
+
+    **Voraussetzung:** Das gewählte Benachrichtigungs-Skript (`script.notification_send`,
+    `_oliver` oder `_tina`) und `script.notification_delete`
+    (Blueprint `tefracky/notification-send.yaml`).
+
+
+    Mindestens ein Sensor (CO₂ oder Luftfeuchte) muss gewählt werden.
+  domain: automation
+  homeassistant:
+    min_version: "2024.10.0"
+  input:
+    room:
+      name: Raum
+      icon: mdi:door
+      input:
+        room_name:
+          name: Raumname *
+          description: Wird in Titel und Text der Meldung verwendet (z. B. "Schlafzimmer").
+          selector:
+            text:
+        co2_sensors:
+          name: CO₂- / eCO₂-Sensor
+          description: Optional. Leer lassen, wenn der Raum nur die Luftfeuchte überwachen soll.
+          default: []
+          selector:
+            entity:
+              domain: sensor
+              multiple: true
+        humidity_sensors:
+          name: Luftfeuchte-Sensor
+          description: Optional. Leer lassen, wenn nur CO₂ überwacht werden soll.
+          default: []
+          selector:
+            entity:
+              domain: sensor
+              device_class: humidity
+              multiple: true
+        window_sensors:
+          name: Fenster- und Türkontakte
+          description: >
+            Es wird nur gemeldet, wenn alle gewählten Kontakte geschlossen (`off`) sind.
+            Öffnet jemand einen davon, wird die Meldung gelöscht.
+          default: []
+          selector:
+            entity:
+              domain: binary_sensor
+              multiple: true
+        active_sensors:
+          name: Aktiv-Sensoren (alle müssen an sein)
+          description: >
+            Optional. Es wird nur gemeldet, wenn alle gewählten Sensoren `on` sind
+            (z. B. `binary_sensor.awake`).
+          default: []
+          selector:
+            entity:
+              domain: binary_sensor
+              multiple: true
+        presence_sensors:
+          name: Anwesenheits-Sensoren (mindestens einer an)
+          description: >
+            Optional. Es wird nur gemeldet, wenn mindestens einer davon `on` ist
+            (z. B. Oliver zu Hause, Tina zu Hause, Präsenzmelder).
+          default: []
+          selector:
+            entity:
+              domain: binary_sensor
+              multiple: true
+    thresholds:
+      name: Schwellen
+      icon: mdi:gauge
+      collapsed: true
+      input:
+        co2_threshold:
+          name: CO₂ ab (ppm)
+          default: 1000
+          selector:
+            number:
+              min: 400
+              max: 5000
+              step: 50
+              unit_of_measurement: ppm
+              mode: box
+        co2_reset:
+          name: CO₂ zurückgesetzt unter (ppm)
+          description: Muss unter dem Auslöse-Wert liegen (Hysterese).
+          default: 800
+          selector:
+            number:
+              min: 400
+              max: 5000
+              step: 50
+              unit_of_measurement: ppm
+              mode: box
+        humidity_threshold:
+          name: Luftfeuchte ab (%)
+          default: 65
+          selector:
+            number:
+              min: 30
+              max: 100
+              step: 1
+              unit_of_measurement: "%"
+              mode: box
+        humidity_reset:
+          name: Luftfeuchte zurückgesetzt unter (%)
+          description: Muss unter dem Auslöse-Wert liegen (Hysterese).
+          default: 58
+          selector:
+            number:
+              min: 30
+              max: 100
+              step: 1
+              unit_of_measurement: "%"
+              mode: box
+        trigger_delay:
+          name: Verzögerung
+          description: Wie lange der Wert über der Schwelle liegen muss, bevor gemeldet wird.
+          default:
+            minutes: 10
+          selector:
+            duration:
+    outdoor:
+      name: Außenluft-Vergleich (nur Luftfeuchte)
+      icon: mdi:weather-windy
+      collapsed: true
+      input:
+        indoor_temperature:
+          name: Innentemperatur
+          description: Optional. Zusammen mit Außentemperatur und Außenfeuchte nötig.
+          default: ""
+          selector:
+            entity:
+              domain: sensor
+              device_class: temperature
+        outdoor_temperature:
+          name: Außentemperatur
+          default: ""
+          selector:
+            entity:
+              domain: sensor
+              device_class: temperature
+        outdoor_humidity:
+          name: Außenluftfeuchte
+          default: ""
+          selector:
+            entity:
+              domain: sensor
+              device_class: humidity
+        abs_humidity_margin:
+          name: Mindest-Vorsprung der Außenluft (g/m³)
+          description: >
+            Lüften wird nur empfohlen, wenn die absolute Feuchte außen mindestens so viel
+            niedriger ist als innen.
+          default: 0.5
+          selector:
+            number:
+              min: 0
+              max: 5
+              step: 0.1
+              unit_of_measurement: g/m³
+              mode: box
+    notification:
+      name: Benachrichtigung
+      icon: mdi:bell
+      collapsed: true
+      input:
+        notify_script:
+          name: Benachrichtigungs-Skript
+          description: Über welches Skript die Meldung verschickt wird (nur Handys, kein Telegram).
+          default: script.notification_send
+          selector:
+            select:
+              options:
+                - label: Oliver und Tina (Standard-Geräteliste)
+                  value: script.notification_send
+                - label: Nur Oliver (Handys)
+                  value: script.notification_send_oliver
+                - label: Nur Tina (Handys)
+                  value: script.notification_send_tina
+        notify_persistent:
+          name: Zusätzlich persistente HA-Meldung
+          default: false
+          selector:
+            boolean:
+        notify_data:
+          name: Optionen
+          description: Optionen für `notify_data` (z. B. `alert_once` = nur beim ersten Mal Ton).
+          default:
+            - alert_once
+          selector:
+            select:
+              multiple: true
+              options:
+                - alert_once
+                - sticky
+                - high_priority
+        custom_actions:
+          name: Zusätzliche Aktionen bei der Meldung
+          description: Z. B. Alexa-Ansage. Läuft nach der Benachrichtigung.
+          default: []
+          selector:
+            action:
+
+mode: queued
+max: 5
+max_exceeded: silent
+trace:
+  stored_traces: 10
+
+variables:
+  room_name: !input room_name
+  co2_sensors: !input co2_sensors
+  humidity_sensors: !input humidity_sensors
+  presence_sensors: !input presence_sensors
+  indoor_temperature: !input indoor_temperature
+  outdoor_temperature: !input outdoor_temperature
+  outdoor_humidity: !input outdoor_humidity
+  abs_humidity_margin: !input abs_humidity_margin
+  co2_threshold: !input co2_threshold
+  humidity_threshold: !input humidity_threshold
+  notify_script: !input notify_script
+  notify_persistent: !input notify_persistent
+  notify_data: !input notify_data
+  tag_base: "{{ 'lueften_' ~ (room_name | slugify) }}"
+
+triggers:
+  - trigger: numeric_state
+    id: co2_high
+    entity_id: !input co2_sensors
+    above: !input co2_threshold
+    for: !input trigger_delay
+  - trigger: numeric_state
+    id: humidity_high
+    entity_id: !input humidity_sensors
+    above: !input humidity_threshold
+    for: !input trigger_delay
+  - trigger: numeric_state
+    id: co2_ok
+    entity_id: !input co2_sensors
+    below: !input co2_reset
+  - trigger: numeric_state
+    id: humidity_ok
+    entity_id: !input humidity_sensors
+    below: !input humidity_reset
+  - trigger: state
+    id: window_opened
+    entity_id: !input window_sensors
+    to: "on"
+  - trigger: state
+    id: recheck
+    entity_id: !input active_sensors
+    to: "on"
+  - trigger: state
+    id: recheck
+    entity_id: !input presence_sensors
+    to: "on"
+
+actions:
+  - alias: Meldung löschen (Luft wieder gut oder Fenster geöffnet)
+    if:
+      - condition: trigger
+        id:
+          - co2_ok
+          - humidity_ok
+          - window_opened
+    then:
+      - alias: CO₂-Meldung löschen
+        if:
+          - condition: template
+            value_template: "{{ trigger.id in ['co2_ok', 'window_opened'] }}"
+        then:
+          - action: script.notification_delete
+            data:
+              notify_tag: "{{ tag_base ~ '_co2' }}"
+      - alias: Feuchte-Meldung löschen
+        if:
+          - condition: template
+            value_template: "{{ trigger.id in ['humidity_ok', 'window_opened'] }}"
+        then:
+          - action: script.notification_delete
+            data:
+              notify_tag: "{{ tag_base ~ '_feuchte' }}"
+      - stop: Meldung gelöscht
+  - alias: Nur melden, wenn alle Fenster zu sind
+    condition: state
+    entity_id: !input window_sensors
+    state: "off"
+  - alias: Nur melden, wenn alle Aktiv-Sensoren an sind (falls konfiguriert)
+    condition: state
+    entity_id: !input active_sensors
+    state: "on"
+  - alias: Nur bei Anwesenheit (falls konfiguriert)
+    condition: template
+    value_template: >
+      {{ presence_sensors | length == 0
+         or expand(presence_sensors) | selectattr('state', 'eq', 'on') | list | count > 0 }}
+  - alias: Aktuelle Werte und Meldungsbedarf bestimmen
+    variables:
+      co2_now: >
+        {% set v = expand(co2_sensors) | map(attribute='state') | map('float', -1) | list %}
+        {{ (v | max) if v else -1 }}
+      humidity_now: >
+        {% set v = expand(humidity_sensors) | map(attribute='state') | map('float', -1) | list %}
+        {{ (v | max) if v else -1 }}
+      outdoor_ok: >
+        {% set ti = states(indoor_temperature) | float(none) if indoor_temperature else none %}
+        {% set ta = states(outdoor_temperature) | float(none) if outdoor_temperature else none %}
+        {% set rha = states(outdoor_humidity) | float(none) if outdoor_humidity else none %}
+        {% if none in [ti, ta, rha] or humidity_now < 0 %}
+          true
+        {% else %}
+          {% set ahi = 6.112 * e ** (17.67 * ti / (ti + 243.5)) * humidity_now * 2.1674 / (273.15 + ti) %}
+          {% set aha = 6.112 * e ** (17.67 * ta / (ta + 243.5)) * rha * 2.1674 / (273.15 + ta) %}
+          {{ aha <= ahi - (abs_humidity_margin | float(0)) }}
+        {% endif %}
+  - alias: Meldungsbedarf
+    variables:
+      send_co2: >
+        {{ trigger.id == 'co2_high'
+           or (trigger.id == 'recheck' and co2_now > (co2_threshold | float(0))) }}
+      send_humidity: >
+        {{ (trigger.id == 'humidity_high'
+            or (trigger.id == 'recheck' and humidity_now > (humidity_threshold | float(0))))
+           and outdoor_ok }}
+  - alias: CO₂-Meldung senden
+    if:
+      - condition: template
+        value_template: "{{ send_co2 }}"
+    then:
+      - action: "{{ notify_script }}"
+        data:
+          notify_title: "{{ 'Lüften: ' ~ room_name }}"
+          notify_message: >
+            Die Luft ist verbraucht ({{ co2_now | round(0) | int }} ppm, ab {{ co2_threshold | int }} ppm).
+            Bitte kurz stoßlüften.
+          notify_tag: "{{ tag_base ~ '_co2' }}"
+          notify_data: "{{ notify_data }}"
+          notify_persistent: "{{ notify_persistent }}"
+  - alias: Feuchte-Meldung senden
+    if:
+      - condition: template
+        value_template: "{{ send_humidity }}"
+    then:
+      - action: "{{ notify_script }}"
+        data:
+          notify_title: "{{ 'Lüften: ' ~ room_name }}"
+          notify_message: >
+            Die Luft ist feucht ({{ humidity_now | round(0) | int }} %, ab {{ humidity_threshold | int }} %).
+            Bitte lüften.
+          notify_tag: "{{ tag_base ~ '_feuchte' }}"
+          notify_data: "{{ notify_data }}"
+          notify_persistent: "{{ notify_persistent }}"
+  - alias: Zusätzliche Aktionen
+    if:
+      - condition: template
+        value_template: "{{ send_co2 or send_humidity }}"
+    then: !input custom_actions
