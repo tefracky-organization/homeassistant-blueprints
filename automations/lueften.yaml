@@ -4,7 +4,7 @@ blueprint:
   description: >
     # 🌬️ Lüftungs-Erinnerung
 
-    **Version 1.0**
+    **Version 1.1**
 
 
     Meldet, wann in einem Raum gelüftet werden sollte, und räumt die Meldung wieder weg,
@@ -28,9 +28,16 @@ blueprint:
       mindestens ein „Anwesenheits-Sensor“ muss `on` sein (z. B. Oliver/Tina zu Hause).
 
 
-    **Neuprüfung:** Sobald ein Aktiv- oder Anwesenheits-Sensor auf `on` wechselt (z. B. Aufwachen,
-    Heimkommen), werden die aktuellen Werte geprüft. So gibt es auch dann eine Meldung, wenn der Wert
-    schon in der Nacht über die Schwelle stieg.
+    **Neuprüfung:** Sobald ein Aktiv-Sensor auf `on` wechselt (z. B. Aufwachen), werden die aktuellen
+    Werte geprüft. So gibt es auch dann eine Meldung, wenn der Wert schon in der Nacht über die Schwelle
+    stieg. Heimkommen löst bewusst keine Neuprüfung aus (GPS-Flackern würde sonst mehrfach melden).
+
+
+    **Merker (Hysterese):** Mit je einem `input_boolean` für CO₂ und Luftfeuchte merkt sich der Blueprint,
+    dass eine Meldung aktiv ist. Solange der Merker an ist, kommt keine neue Meldung, auch wenn der Wert
+    um die Schwelle pendelt. Der Merker geht aus, wenn der Wert unter den Rücksetz-Wert fällt oder ein
+    Fenster geöffnet wird. Gelöscht wird nur, wenn der Merker an war. Ohne Merker verhält sich der Blueprint
+    wie in Version 1.0 (jede erneute Überschreitung meldet, jede Unterschreitung löscht).
 
 
     **Ende der Meldung:** Wert unter dem Rücksetz-Wert, oder ein Fenster wird geöffnet.
@@ -107,6 +114,25 @@ blueprint:
             entity:
               domain: binary_sensor
               multiple: true
+    state:
+      name: Merker (empfohlen)
+      icon: mdi:toggle-switch
+      collapsed: true
+      input:
+        co2_alert_flag:
+          name: Merker CO₂-Meldung aktiv
+          description: Optional. Ein `input_boolean` pro Raum; verhindert Wiederholungen um die Schwelle.
+          default: ""
+          selector:
+            entity:
+              domain: input_boolean
+        humidity_alert_flag:
+          name: Merker Feuchte-Meldung aktiv
+          description: Optional. Ein `input_boolean` pro Raum; verhindert Wiederholungen um die Schwelle.
+          default: ""
+          selector:
+            entity:
+              domain: input_boolean
     thresholds:
       name: Schwellen
       icon: mdi:gauge
@@ -237,67 +263,6 @@ blueprint:
                 - sticky
                 - high_priority
         custom_actions:
-          name: Zusätzliche Aktionen bei der Meldung
-          description: Z. B. Alexa-Ansage. Läuft nach der Benachrichtigung.
-          default: []
-          selector:
-            action:
-
-mode: queued
-max: 5
-max_exceeded: silent
-trace:
-  stored_traces: 10
-
-variables:
-  room_name: !input room_name
-  co2_sensors: !input co2_sensors
-  humidity_sensors: !input humidity_sensors
-  presence_sensors: !input presence_sensors
-  indoor_temperature: !input indoor_temperature
-  outdoor_temperature: !input outdoor_temperature
-  outdoor_humidity: !input outdoor_humidity
-  abs_humidity_margin: !input abs_humidity_margin
-  co2_threshold: !input co2_threshold
-  humidity_threshold: !input humidity_threshold
-  notify_script: !input notify_script
-  notify_persistent: !input notify_persistent
-  notify_data: !input notify_data
-  tag_base: "{{ 'lueften_' ~ (room_name | slugify) }}"
-
-triggers:
-  - trigger: numeric_state
-    id: co2_high
-    entity_id: !input co2_sensors
-    above: !input co2_threshold
-    for: !input trigger_delay
-  - trigger: numeric_state
-    id: humidity_high
-    entity_id: !input humidity_sensors
-    above: !input humidity_threshold
-    for: !input trigger_delay
-  - trigger: numeric_state
-    id: co2_ok
-    entity_id: !input co2_sensors
-    below: !input co2_reset
-  - trigger: numeric_state
-    id: humidity_ok
-    entity_id: !input humidity_sensors
-    below: !input humidity_reset
-  - trigger: state
-    id: window_opened
-    entity_id: !input window_sensors
-    to: "on"
-  - trigger: state
-    id: recheck
-    entity_id: !input active_sensors
-    to: "on"
-  - trigger: state
-    id: recheck
-    entity_id: !input presence_sensors
-    to: "on"
-
-actions:
   - alias: Meldung löschen (Luft wieder gut oder Fenster geöffnet)
     if:
       - condition: trigger
@@ -306,22 +271,40 @@ actions:
           - humidity_ok
           - window_opened
     then:
-      - alias: CO₂-Meldung löschen
+      - alias: CO₂-Meldung löschen (nur wenn aktiv)
         if:
           - condition: template
-            value_template: "{{ trigger.id in ['co2_ok', 'window_opened'] }}"
+            value_template: >
+              {{ trigger.id in ['co2_ok', 'window_opened']
+                 and (not co2_alert_flag or is_state(co2_alert_flag, 'on')) }}
         then:
           - action: script.notification_delete
             data:
               notify_tag: "{{ tag_base ~ '_co2' }}"
-      - alias: Feuchte-Meldung löschen
+          - if:
+              - condition: template
+                value_template: "{{ co2_alert_flag != '' }}"
+            then:
+              - action: input_boolean.turn_off
+                target:
+                  entity_id: "{{ co2_alert_flag }}"
+      - alias: Feuchte-Meldung löschen (nur wenn aktiv)
         if:
           - condition: template
-            value_template: "{{ trigger.id in ['humidity_ok', 'window_opened'] }}"
+            value_template: >
+              {{ trigger.id in ['humidity_ok', 'window_opened']
+                 and (not humidity_alert_flag or is_state(humidity_alert_flag, 'on')) }}
         then:
           - action: script.notification_delete
             data:
               notify_tag: "{{ tag_base ~ '_feuchte' }}"
+          - if:
+              - condition: template
+                value_template: "{{ humidity_alert_flag != '' }}"
+            then:
+              - action: input_boolean.turn_off
+                target:
+                  entity_id: "{{ humidity_alert_flag }}"
       - stop: Meldung gelöscht
   - alias: Nur melden, wenn alle Fenster zu sind
     condition: state
@@ -355,20 +338,29 @@ actions:
           {% set aha = 6.112 * e ** (17.67 * ta / (ta + 243.5)) * rha * 2.1674 / (273.15 + ta) %}
           {{ aha <= ahi - (abs_humidity_margin | float(0)) }}
         {% endif %}
-  - alias: Meldungsbedarf
+  - alias: Meldungsbedarf (nur wenn Merker aus)
     variables:
       send_co2: >
-        {{ trigger.id == 'co2_high'
-           or (trigger.id == 'recheck' and co2_now > (co2_threshold | float(0))) }}
+        {{ (trigger.id == 'co2_high'
+            or (trigger.id == 'recheck' and co2_now > (co2_threshold | float(0))))
+           and (not co2_alert_flag or is_state(co2_alert_flag, 'off')) }}
       send_humidity: >
         {{ (trigger.id == 'humidity_high'
             or (trigger.id == 'recheck' and humidity_now > (humidity_threshold | float(0))))
-           and outdoor_ok }}
+           and outdoor_ok
+           and (not humidity_alert_flag or is_state(humidity_alert_flag, 'off')) }}
   - alias: CO₂-Meldung senden
     if:
       - condition: template
         value_template: "{{ send_co2 }}"
     then:
+      - if:
+          - condition: template
+            value_template: "{{ co2_alert_flag != '' }}"
+        then:
+          - action: input_boolean.turn_on
+            target:
+              entity_id: "{{ co2_alert_flag }}"
       - action: "{{ notify_script }}"
         data:
           notify_title: "{{ 'Lüften: ' ~ room_name }}"
@@ -383,6 +375,13 @@ actions:
       - condition: template
         value_template: "{{ send_humidity }}"
     then:
+      - if:
+          - condition: template
+            value_template: "{{ humidity_alert_flag != '' }}"
+        then:
+          - action: input_boolean.turn_on
+            target:
+              entity_id: "{{ humidity_alert_flag }}"
       - action: "{{ notify_script }}"
         data:
           notify_title: "{{ 'Lüften: ' ~ room_name }}"
