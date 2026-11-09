@@ -4,7 +4,7 @@ blueprint:
   description: >
     # 🌬️ Lüftungs-Erinnerung
 
-    **Version 1.2**
+    **Version 1.3**
 
 
     Meldet, wann in einem Raum gelüftet werden sollte, und räumt die Meldung wieder weg,
@@ -38,6 +38,12 @@ blueprint:
     um die Schwelle pendelt. Der Merker geht aus, wenn der Wert unter den Rücksetz-Wert fällt oder ein
     Fenster geöffnet wird. Gelöscht wird nur, wenn der Merker an war. Ohne Merker verhält sich der Blueprint
     wie in Version 1.0 (jede erneute Überschreitung meldet, jede Unterschreitung löscht).
+
+
+    **Kühl-Lüften (optional, Sommer):** Ist der Raum 5 Minuten lang wärmer als draußen (und wärmer als
+    die gewählte Mindesttemperatur), kommt die Meldung "jetzt lüften kühlt den Raum". Nur mit Merker,
+    Innen- und Außentemperatur; optional nur bei aktivem Sommermodus und ab einer Uhrzeit. Ende der Meldung:
+    Raum nicht mehr wärmer als draußen, oder ein Fenster wird geöffnet.
 
 
     **Ende der Meldung:** Wert unter dem Rücksetz-Wert, oder ein Fenster wird geöffnet.
@@ -227,6 +233,57 @@ blueprint:
               step: 0.1
               unit_of_measurement: g/m³
               mode: box
+    cooling:
+      name: Kühl-Lüften (Sommer, optional)
+      icon: mdi:snowflake-thermometer
+      collapsed: true
+      input:
+        cool_alert_flag:
+          name: Merker Kühl-Meldung aktiv
+          description: Ein `input_boolean` pro Raum. Ohne Merker ist das Kühl-Lüften aus. Braucht Innen- und Außentemperatur (Gruppe Außenluft-Vergleich).
+          default: ""
+          selector:
+            entity:
+              domain: input_boolean
+        cool_season_entity:
+          name: Nur wenn an (z. B. Sommermodus)
+          description: Optional. Ein `input_boolean`; nur bei `on` wird gemeldet.
+          default: ""
+          selector:
+            entity:
+              domain: input_boolean
+        cool_floor_entity:
+          name: Mindesttemperatur (Entität)
+          description: Optional. Ein Sensor oder eine Zahl (z. B. Sommer-Schwelle der Heizung). Gemeldet wird nur, wenn der Raum wärmer ist als der größere Wert aus Außentemperatur und dieser Entität.
+          default: ""
+          selector:
+            entity:
+              domain:
+                - sensor
+                - number
+                - input_number
+        cool_after:
+          name: Frühestens ab Uhrzeit
+          default: "13:00:00"
+          selector:
+            time:
+        cool_delay:
+          name: Verzögerung Kühl-Meldung
+          default:
+            minutes: 5
+          selector:
+            duration:
+        cool_notify_data:
+          name: Optionen der Kühl-Meldung
+          default:
+            - sticky
+          selector:
+            select:
+              multiple: true
+              options:
+                - alert_once
+                - sticky
+                - high_priority
     notification:
       name: Benachrichtigung
       icon: mdi:bell
@@ -281,6 +338,12 @@ max_exceeded: silent
 trace:
   stored_traces: 10
 
+trigger_variables:
+  cool_alert_flag: !input cool_alert_flag
+  cool_floor_entity: !input cool_floor_entity
+  indoor_temperature: !input indoor_temperature
+  outdoor_temperature: !input outdoor_temperature
+
 variables:
   room_name: !input room_name
   co2_sensors: !input co2_sensors
@@ -294,6 +357,10 @@ variables:
   humidity_threshold: !input humidity_threshold
   co2_alert_flag: !input co2_alert_flag
   humidity_alert_flag: !input humidity_alert_flag
+  cool_alert_flag: !input cool_alert_flag
+  cool_season_entity: !input cool_season_entity
+  cool_floor_entity: !input cool_floor_entity
+  cool_notify_data: !input cool_notify_data
   notify_script: !input notify_script
   notify_persistent: !input notify_persistent
   notify_data: !input notify_data
@@ -327,6 +394,28 @@ triggers:
     id: recheck
     entity_id: !input active_sensors
     to: "on"
+  - trigger: template
+    id: cool_high
+    enabled: "{{ cool_alert_flag != '' and indoor_temperature != '' and outdoor_temperature != '' }}"
+    value_template: >
+      {% set ti = states(indoor_temperature) | float(none) %}
+      {% set ta = states(outdoor_temperature) | float(none) %}
+      {% set fl = states(cool_floor_entity) | float(0) if cool_floor_entity else 0 %}
+      {{ ti is not none and ta is not none and ti > [ta, fl] | max }}
+    for: !input cool_delay
+  - trigger: template
+    id: cool_end
+    enabled: "{{ cool_alert_flag != '' and indoor_temperature != '' and outdoor_temperature != '' }}"
+    value_template: >
+      {% set ti = states(indoor_temperature) | float(none) %}
+      {% set ta = states(outdoor_temperature) | float(none) %}
+      {% set fl = states(cool_floor_entity) | float(0) if cool_floor_entity else 0 %}
+      {{ ti is not none and ta is not none and ti < [ta, fl] | max }}
+    for: !input cool_delay
+  - trigger: time
+    id: recheck_cool
+    enabled: "{{ cool_alert_flag != '' and indoor_temperature != '' and outdoor_temperature != '' }}"
+    at: !input cool_after
 
 actions:
   - alias: Meldung löschen (Luft wieder gut oder Fenster geöffnet)
@@ -335,6 +424,7 @@ actions:
         id:
           - co2_ok
           - humidity_ok
+          - cool_end
           - window_opened
     then:
       - alias: CO₂-Meldung löschen (nur wenn aktiv)
@@ -371,6 +461,19 @@ actions:
               - action: input_boolean.turn_off
                 target:
                   entity_id: "{{ humidity_alert_flag }}"
+      - alias: Kühl-Meldung löschen (nur wenn aktiv)
+        if:
+          - condition: template
+            value_template: >
+              {{ trigger.id in ['cool_end', 'window_opened']
+                 and cool_alert_flag != '' and is_state(cool_alert_flag, 'on') }}
+        then:
+          - action: script.notification_delete
+            data:
+              notify_tag: "{{ tag_base ~ '_kuehl' }}"
+          - action: input_boolean.turn_off
+            target:
+              entity_id: "{{ cool_alert_flag }}"
       - stop: Meldung gelöscht
   - alias: Nur melden, wenn alle Fenster zu sind
     condition: state
@@ -457,6 +560,41 @@ actions:
             Bitte lüften.
           notify_tag: "{{ tag_base ~ '_feuchte' }}"
           notify_data: "{{ notify_data }}"
+          notify_persistent: "{{ notify_persistent }}"
+          notify_channel: "{{ notify_channel }}"
+  - alias: Kühl-Bedarf bestimmen
+    variables:
+      cool_in: >
+        {{ states(indoor_temperature) | float(none) if indoor_temperature else none }}
+      cool_out: >
+        {{ states(outdoor_temperature) | float(none) if outdoor_temperature else none }}
+      cool_floor: >
+        {{ states(cool_floor_entity) | float(0) if cool_floor_entity else 0 }}
+      send_cool: >
+        {{ cool_alert_flag != ''
+           and cool_in is not none and cool_out is not none
+           and (trigger.id == 'cool_high'
+                or (trigger.id in ['recheck', 'recheck_cool'] and cool_in > [cool_out, cool_floor] | max))
+           and is_state(cool_alert_flag, 'off')
+           and (not cool_season_entity or is_state(cool_season_entity, 'on')) }}
+  - alias: Kühl-Lüften melden
+    if:
+      - condition: template
+        value_template: "{{ send_cool }}"
+      - condition: time
+        after: !input cool_after
+    then:
+      - action: input_boolean.turn_on
+        target:
+          entity_id: "{{ cool_alert_flag }}"
+      - action: "{{ notify_script }}"
+        data:
+          notify_title: "{{ 'Lüften: ' ~ room_name }}"
+          notify_message: >
+            Draußen ist es mit {{ cool_out | round(1) }} °C kühler als im Raum ({{ cool_in | round(1) }} °C).
+            Jetzt lüften kühlt den Raum.
+          notify_tag: "{{ tag_base ~ '_kuehl' }}"
+          notify_data: "{{ cool_notify_data }}"
           notify_persistent: "{{ notify_persistent }}"
           notify_channel: "{{ notify_channel }}"
   - alias: Zusätzliche Aktionen
