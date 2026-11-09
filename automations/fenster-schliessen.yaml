@@ -22,7 +22,8 @@ blueprint:
       (nur wenn sie beim Öffnen noch darüber lagen).
 
     - **Zu kalt geworden:** Die Raumtemperatur ist seit dem Öffnen um die gewählte
-      Gradzahl gefallen.
+      Gradzahl gefallen (nur wenn es draußen kälter ist als "Keine Maximalzeit ab",
+      damit Nachtkühlung im Sommer nicht gemeldet wird).
 
     - **Draußen wärmer als drinnen (Sommer):** Die Außentemperatur liegt mindestens die gewählten
       Kelvin über der Raumtemperatur (5 Min lang) und der Raum ist mindestens so warm wie eingestellt.
@@ -370,7 +371,9 @@ actions:
         id: too_cold
         value_template: >
           {% set t = states(indoor_temperature) | float(none) if indoor_temperature else none %}
+          {% set ta = states(outdoor_temperature) | float(none) if outdoor_temperature else none %}
           {{ (temp_drop | float(0)) > 0 and indoor_open is not none and t is not none
+             and (ta is none or ta < (warm_no_limit | float(18)))
              and t <= indoor_open - (temp_drop | float(0)) }}
       - trigger: template
         id: too_warm
