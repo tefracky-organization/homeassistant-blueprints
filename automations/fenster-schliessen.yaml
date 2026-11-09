@@ -1,0 +1,454 @@
+blueprint:
+  source_url: "https://raw.githubusercontent.com/tefracky-organization/homeassistant-blueprints/refs/heads/blueprints/automations/fenster-schliessen.yaml"
+  name: Fenster-schließen-Erinnerung
+  description: >
+    # 🪟 Fenster-schließen-Erinnerung
+
+    **Version 1.1**
+
+
+    Meldet, wann ein geöffnetes Fenster wieder geschlossen werden soll, und löscht
+    die Meldung, sobald alle Fensterkontakte zu sind. Gegenstück zur
+    Lüftungs-Erinnerung (`tefracky/lueften.yaml`).
+
+
+    **Start:** Ein Fensterkontakt wechselt auf `on`. Danach läuft pro Öffnung genau
+    ein Ablauf (Modus `single`), bis alle Kontakte wieder zu sind.
+
+
+    **Gemeldet wird, sobald eines davon zutrifft (nach der Mindest-Offenzeit):**
+
+    - **Luft wieder gut:** CO₂ und Luftfeuchte sind unter ihren Rücksetz-Wert gefallen
+      (nur wenn sie beim Öffnen noch darüber lagen).
+
+    - **Zu kalt geworden:** Die Raumtemperatur ist seit dem Öffnen um die gewählte
+      Gradzahl gefallen.
+
+    - **Draußen wärmer als drinnen (Sommer):** Die Außentemperatur liegt mindestens die gewählten
+      Kelvin über der Raumtemperatur (5 Min lang) und der Raum ist mindestens so warm wie eingestellt.
+
+    - **Maximale Zeit:** Das Fenster ist so lange offen, wie die Außentemperatur
+      erlaubt. Die erlaubte Dauer ist `Kältefaktor / (Innen − Außen)` Minuten, begrenzt
+      auf Mindest-Offenzeit + 1 bis zur Maximalzeit. Je kälter draußen, desto kürzer.
+      Ohne Außentemperatur gilt die Maximalzeit. Ab der Außentemperatur "Keine Maximalzeit"
+      (Standard 18 °C) entfällt sie, damit offene Sommernächte nicht gemeldet werden.
+
+
+    **Bedingungen für die Meldung (falls konfiguriert):** Alle Aktiv-Sensoren `on`
+    (z. B. `binary_sensor.awake`) und mindestens ein Anwesenheits-Sensor `on`.
+    Sind sie noch nicht erfüllt, wird die Meldung nachgeholt, sobald sie es sind
+    (z. B. beim Aufwachen), sofern das Fenster dann noch offen ist.
+
+
+    **Voraussetzung:** Das gewählte Benachrichtigungs-Skript (`script.notification_send`,
+    `_oliver` oder `_tina`) und `script.notification_delete`
+    (Blueprint `tefracky/notification-send.yaml`).
+  domain: automation
+  homeassistant:
+    min_version: 2024.10.0
+  input:
+    room:
+      name: Raum
+      icon: mdi:door
+      input:
+        room_name:
+          name: Raumname *
+          description: Wird in Titel und Text der Meldung verwendet (z. B. "Schlafzimmer").
+          selector:
+            text:
+        window_sensors:
+          name: Fenster- und Türkontakte *
+          description: Die Meldung gilt, solange mindestens einer davon offen (`on`) ist.
+          selector:
+            entity:
+              domain:
+                - binary_sensor
+              multiple: true
+        co2_sensors:
+          name: CO₂- / eCO₂-Sensor
+          description: Optional. Für die Meldung "Luft wieder gut".
+          default: []
+          selector:
+            entity:
+              domain:
+                - sensor
+              multiple: true
+        humidity_sensors:
+          name: Luftfeuchte-Sensor
+          description: Optional. Für die Meldung "Luft wieder gut".
+          default: []
+          selector:
+            entity:
+              domain:
+                - sensor
+              device_class:
+                - humidity
+              multiple: true
+        active_sensors:
+          name: Aktiv-Sensoren (alle müssen an sein)
+          description: Optional. Z. B. `binary_sensor.awake`.
+          default: []
+          selector:
+            entity:
+              domain:
+                - binary_sensor
+              multiple: true
+        presence_sensors:
+          name: Anwesenheits-Sensoren (mindestens einer an)
+          description: Optional. Z. B. Oliver/Tina zu Hause.
+          default: []
+          selector:
+            entity:
+              domain:
+                - binary_sensor
+              multiple: true
+    timing:
+      name: Zeiten und Schwellen
+      icon: mdi:timer-outline
+      collapsed: true
+      input:
+        min_open:
+          name: Mindest-Offenzeit
+          description: Vorher kommt nie eine Meldung (Minuten).
+          default: 5
+          selector:
+            number:
+              min: 1
+              max: 60
+              step: 1
+              unit_of_measurement: min
+              mode: box
+        max_minutes:
+          name: Maximale Offenzeit
+          description: Obergrenze, wenn es draußen mild ist (Minuten).
+          default: 30
+          selector:
+            number:
+              min: 5
+              max: 240
+              step: 5
+              unit_of_measurement: min
+              mode: box
+        cold_factor:
+          name: Kältefaktor (K·min)
+          description: >
+            Erlaubte Dauer = Faktor / (Innen − Außen). Beispiel 300: bei 10 K Unterschied
+            30 Min, bei 25 K 12 Min. Kleiner = früher erinnern.
+          default: 300
+          selector:
+            number:
+              min: 50
+              max: 1000
+              step: 10
+              mode: box
+        temp_drop:
+          name: Abkühlung seit dem Öffnen (K)
+          description: Meldung, wenn die Raumtemperatur um so viel gefallen ist. 0 = aus.
+          default: 2.0
+          selector:
+            number:
+              min: 0
+              max: 10
+              step: 0.5
+              unit_of_measurement: K
+              mode: box
+        heat_margin:
+          name: Draußen wärmer als drinnen ab (K)
+          description: >
+            Meldung "Wärme bleibt draußen", wenn die Außentemperatur mindestens so viel über der
+            Raumtemperatur liegt (nach 5 Min) und der Raum mindestens so warm ist wie unten
+            eingestellt. 0 = aus.
+          default: 0.5
+          selector:
+            number:
+              min: 0
+              max: 10
+              step: 0.5
+              unit_of_measurement: K
+              mode: box
+        heat_min_indoor:
+          name: Hitze-Meldung erst ab Raumtemperatur (°C)
+          default: 22
+          selector:
+            number:
+              min: 15
+              max: 30
+              step: 0.5
+              unit_of_measurement: °C
+              mode: box
+        warm_no_limit:
+          name: Keine Maximalzeit ab Außentemperatur (°C)
+          description: >
+            Ist es draußen mindestens so warm, entfällt die Maximalzeit (z. B. Fenster über Nacht
+            offen im Sommer). Luft gut und Hitze melden weiterhin.
+          default: 18
+          selector:
+            number:
+              min: 5
+              max: 35
+              step: 1
+              unit_of_measurement: °C
+              mode: box
+        co2_reset:
+          name: CO₂ gut unter (ppm)
+          default: 800
+          selector:
+            number:
+              min: 400
+              max: 5000
+              step: 50
+              unit_of_measurement: ppm
+              mode: box
+        humidity_reset:
+          name: Luftfeuchte gut unter (%)
+          default: 58
+          selector:
+            number:
+              min: 30
+              max: 100
+              step: 1
+              unit_of_measurement: "%"
+              mode: box
+    temperature:
+      name: Temperaturen
+      icon: mdi:thermometer
+      collapsed: true
+      input:
+        indoor_temperature:
+          name: Innentemperatur
+          description: Optional. Für "zu kalt" und die erlaubte Dauer.
+          default: ""
+          selector:
+            entity:
+              domain:
+                - sensor
+              device_class:
+                - temperature
+        outdoor_temperature:
+          name: Außentemperatur
+          description: Optional. Ohne sie gilt immer die Maximalzeit.
+          default: ""
+          selector:
+            entity:
+              domain:
+                - sensor
+              device_class:
+                - temperature
+    notification:
+      name: Benachrichtigung
+      icon: mdi:bell
+      collapsed: true
+      input:
+        notify_script:
+          name: Benachrichtigungs-Skript
+          description: Über welches Skript die Meldung verschickt wird (nur Handys, kein Telegram).
+          default: script.notification_send
+          selector:
+            select:
+              options:
+                - label: Oliver und Tina (Standard-Geräteliste)
+                  value: script.notification_send
+                - label: Nur Oliver (Handys)
+                  value: script.notification_send_oliver
+                - label: Nur Tina (Handys)
+                  value: script.notification_send_tina
+        notify_channel:
+          name: Android-Kanal
+          description: Gemeinsamer Kanal für alle Fenster-Meldungen (Ton/Priorität einmal in Android einstellen). Leer = ein Kanal je Tag.
+          default: fenster
+          selector:
+            text:
+        notify_persistent:
+          name: Zusätzlich persistente HA-Meldung
+          default: false
+          selector:
+            boolean:
+        notify_data:
+          name: Optionen
+          description: Optionen für `notify_data` (z. B. `alert_once` = nur beim ersten Mal Ton).
+          default:
+            - alert_once
+          selector:
+            select:
+              multiple: true
+              options:
+                - alert_once
+                - sticky
+                - high_priority
+
+mode: single
+max_exceeded: silent
+trace:
+  stored_traces: 10
+
+variables:
+  room_name: !input room_name
+  window_sensors: !input window_sensors
+  co2_sensors: !input co2_sensors
+  humidity_sensors: !input humidity_sensors
+  active_sensors: !input active_sensors
+  presence_sensors: !input presence_sensors
+  indoor_temperature: !input indoor_temperature
+  outdoor_temperature: !input outdoor_temperature
+  min_open: !input min_open
+  max_minutes: !input max_minutes
+  cold_factor: !input cold_factor
+  temp_drop: !input temp_drop
+  heat_margin: !input heat_margin
+  heat_min_indoor: !input heat_min_indoor
+  warm_no_limit: !input warm_no_limit
+  notify_channel: !input notify_channel
+  co2_reset: !input co2_reset
+  humidity_reset: !input humidity_reset
+  notify_persistent: !input notify_persistent
+  notify_data: !input notify_data
+  tag: "{{ 'fenster_schliessen_' ~ (room_name | slugify) }}"
+triggers:
+  - trigger: state
+    entity_id: !input window_sensors
+    to: "on"
+    not_from:
+      - unavailable
+      - unknown
+
+actions:
+  - alias: Startwerte merken
+    variables:
+      opened_ts: "{{ now().timestamp() }}"
+      indoor_now: >
+        {{ states(indoor_temperature) | float(none) if indoor_temperature else none }}
+      outdoor_now: >
+        {{ states(outdoor_temperature) | float(none) if outdoor_temperature else none }}
+      indoor_open: "{{ indoor_now }}"
+      allowed_minutes: >
+        {% set ti = indoor_now if indoor_now is not none else 21 %}
+        {% if outdoor_now is none %}
+          {{ max_minutes | int }}
+        {% elif outdoor_now >= (warm_no_limit | float(18)) %}
+          1440
+        {% else %}
+          {% set delta = [ti - outdoor_now, 1] | max %}
+          {{ [[(cold_factor | float(300) / delta) | round(0), (min_open | int) + 1] | max, max_minutes | int] | min | int }}
+        {% endif %}
+
+  - alias: Mindest-Offenzeit abwarten (zwischendurch zu = Ende)
+    wait_for_trigger:
+      - trigger: template
+        id: closed
+        value_template: >
+          {{ expand(window_sensors) | selectattr('state', 'eq', 'on') | list | count == 0 }}
+    timeout:
+      minutes: "{{ min_open | int }}"
+    continue_on_timeout: true
+  - alias: Nur weiter, wenn das Fenster noch offen ist
+    condition: template
+    value_template: "{{ wait.trigger is none }}"
+
+  - alias: Hitze schon beim Start erfüllt? (Template-Trigger feuern nur bei Wechsel)
+    variables:
+      heat_now: >
+        {% set ti = states(indoor_temperature) | float(none) if indoor_temperature else none %}
+        {% set ta = states(outdoor_temperature) | float(none) if outdoor_temperature else none %}
+        {{ (heat_margin | float(0)) > 0 and ti is not none and ta is not none
+           and ti >= (heat_min_indoor | float(22)) and ta >= ti + (heat_margin | float(0)) }}
+
+  - alias: Auf Grund zum Schließen warten
+    wait_for_trigger:
+      - trigger: template
+        id: closed
+        value_template: >
+          {{ expand(window_sensors) | selectattr('state', 'eq', 'on') | list | count == 0 }}
+      - trigger: template
+        id: air_good
+        value_template: >
+          {% set c = expand(co2_sensors) | map(attribute='state') | select('is_number') | map('float') | list %}
+          {% set h = expand(humidity_sensors) | map(attribute='state') | select('is_number') | map('float') | list %}
+          {{ (c | length + h | length) > 0
+             and ((c | max) if c else 0) < (co2_reset | float(0))
+             and ((h | max) if h else 0) < (humidity_reset | float(0)) }}
+      - trigger: template
+        id: too_cold
+        value_template: >
+          {% set t = states(indoor_temperature) | float(none) if indoor_temperature else none %}
+          {{ (temp_drop | float(0)) > 0 and indoor_open is not none and t is not none
+             and t <= indoor_open - (temp_drop | float(0)) }}
+      - trigger: template
+        id: too_warm
+        value_template: >
+          {% set ti = states(indoor_temperature) | float(none) if indoor_temperature else none %}
+          {% set ta = states(outdoor_temperature) | float(none) if outdoor_temperature else none %}
+          {{ (heat_margin | float(0)) > 0 and ti is not none and ta is not none
+             and ti >= (heat_min_indoor | float(22)) and ta >= ti + (heat_margin | float(0)) }}
+        for:
+          minutes: 5
+    timeout:
+      minutes: "{{ 0 if heat_now else (allowed_minutes | int) - (min_open | int) }}"
+    continue_on_timeout: true
+  - alias: Grund bestimmen
+    variables:
+      reason: >
+        {{ wait.trigger.id if wait.trigger is not none
+           else ('too_warm' if heat_now else 'max_time') }}
+  - alias: Nur weiter, wenn das Fenster noch offen ist
+    condition: template
+    value_template: "{{ reason != 'closed' }}"
+
+  - alias: Bei fehlender Anwesenheit oder Schlaf auf "bereit" warten
+    if:
+      - condition: template
+        value_template: >
+          {{ not ((active_sensors | length == 0 or expand(active_sensors) | selectattr('state', 'eq', 'on') | list | count == active_sensors | length)
+                  and (presence_sensors | length == 0 or expand(presence_sensors) | selectattr('state', 'eq', 'on') | list | count > 0)) }}
+    then:
+      - wait_for_trigger:
+          - trigger: template
+            id: closed
+            value_template: >
+              {{ expand(window_sensors) | selectattr('state', 'eq', 'on') | list | count == 0 }}
+          - trigger: template
+            id: ready
+            value_template: >
+              {{ (active_sensors | length == 0 or expand(active_sensors) | selectattr('state', 'eq', 'on') | list | count == active_sensors | length)
+                   and (presence_sensors | length == 0 or expand(presence_sensors) | selectattr('state', 'eq', 'on') | list | count > 0) }}
+      - condition: template
+        value_template: "{{ wait.trigger.id == 'ready' }}"
+
+  - alias: Letzte Prüfung vor dem Senden
+    condition: template
+    value_template: >
+      {{ expand(window_sensors) | selectattr('state', 'eq', 'on') | list | count > 0 }}
+
+  - alias: Aktuelle Werte für den Text
+    variables:
+      indoor_now: >
+        {{ states(indoor_temperature) | float(none) if indoor_temperature else none }}
+      outdoor_now: >
+        {{ states(outdoor_temperature) | float(none) if outdoor_temperature else none }}
+  - alias: Meldung senden
+    action: !input notify_script
+    data:
+      notify_title: "{{ 'Fenster schließen: ' ~ room_name }}"
+      notify_message: >
+        {% set mins = ((now().timestamp() - opened_ts) / 60) | round(0) | int %}
+        {% set out = ', draußen ' ~ (outdoor_now | round(0) | int) ~ ' °C' if outdoor_now is not none else '' %}
+        {% if reason == 'air_good' %}
+          Die Luft ist wieder gut (offen seit {{ mins }} Min). Das Fenster kann zu.
+        {% elif reason == 'too_cold' %}
+          Der Raum ist von {{ indoor_open | round(1) }} auf {{ indoor_now | round(1) }} °C abgekühlt{{ out }}. Bitte Fenster schließen.
+        {% elif reason == 'too_warm' %}
+          Draußen ist es wärmer als im Raum ({{ indoor_now | round(1) }} °C{{ out }}). Bitte Fenster schließen, damit die Wärme draußen bleibt.
+        {% else %}
+          Das Fenster ist seit {{ mins }} Min offen{{ out }}. Bitte schließen.
+        {% endif %}
+      notify_tag: "{{ tag }}"
+      notify_data: "{{ notify_data }}"
+      notify_persistent: "{{ notify_persistent }}"
+      notify_channel: "{{ notify_channel }}"
+
+  - alias: Warten, bis alles zu ist (sofort weiter, falls schon zu)
+    wait_template: >
+      {{ expand(window_sensors) | selectattr('state', 'eq', 'on') | list | count == 0 }}
+  - alias: Meldung löschen
+    action: script.notification_delete
+    data:
+      notify_tag: "{{ tag }}"

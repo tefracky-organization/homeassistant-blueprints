@@ -4,7 +4,7 @@ blueprint:
   description: >
     # 🌬️ Lüftungs-Erinnerung
 
-    **Version 1.1**
+    **Version 1.2**
 
 
     Meldet, wann in einem Raum gelüftet werden sollte, und räumt die Meldung wieder weg,
@@ -262,7 +262,73 @@ blueprint:
                 - alert_once
                 - sticky
                 - high_priority
+        notify_channel:
+          name: Android-Kanal
+          description: Gemeinsamer Kanal für alle Lüften-Meldungen (Ton/Priorität einmal in Android einstellen). Leer = ein Kanal je Tag.
+          default: lueften
+          selector:
+            text:
         custom_actions:
+          name: Zusätzliche Aktionen bei der Meldung
+          description: Z. B. Alexa-Ansage. Läuft nach der Benachrichtigung.
+          default: []
+          selector:
+            action:
+
+mode: queued
+max: 5
+max_exceeded: silent
+trace:
+  stored_traces: 10
+
+variables:
+  room_name: !input room_name
+  co2_sensors: !input co2_sensors
+  humidity_sensors: !input humidity_sensors
+  presence_sensors: !input presence_sensors
+  indoor_temperature: !input indoor_temperature
+  outdoor_temperature: !input outdoor_temperature
+  outdoor_humidity: !input outdoor_humidity
+  abs_humidity_margin: !input abs_humidity_margin
+  co2_threshold: !input co2_threshold
+  humidity_threshold: !input humidity_threshold
+  co2_alert_flag: !input co2_alert_flag
+  humidity_alert_flag: !input humidity_alert_flag
+  notify_script: !input notify_script
+  notify_persistent: !input notify_persistent
+  notify_data: !input notify_data
+  notify_channel: !input notify_channel
+  tag_base: "{{ 'lueften_' ~ (room_name | slugify) }}"
+
+triggers:
+  - trigger: numeric_state
+    id: co2_high
+    entity_id: !input co2_sensors
+    above: !input co2_threshold
+    for: !input trigger_delay
+  - trigger: numeric_state
+    id: humidity_high
+    entity_id: !input humidity_sensors
+    above: !input humidity_threshold
+    for: !input trigger_delay
+  - trigger: numeric_state
+    id: co2_ok
+    entity_id: !input co2_sensors
+    below: !input co2_reset
+  - trigger: numeric_state
+    id: humidity_ok
+    entity_id: !input humidity_sensors
+    below: !input humidity_reset
+  - trigger: state
+    id: window_opened
+    entity_id: !input window_sensors
+    to: "on"
+  - trigger: state
+    id: recheck
+    entity_id: !input active_sensors
+    to: "on"
+
+actions:
   - alias: Meldung löschen (Luft wieder gut oder Fenster geöffnet)
     if:
       - condition: trigger
@@ -370,6 +436,7 @@ blueprint:
           notify_tag: "{{ tag_base ~ '_co2' }}"
           notify_data: "{{ notify_data }}"
           notify_persistent: "{{ notify_persistent }}"
+          notify_channel: "{{ notify_channel }}"
   - alias: Feuchte-Meldung senden
     if:
       - condition: template
@@ -391,6 +458,7 @@ blueprint:
           notify_tag: "{{ tag_base ~ '_feuchte' }}"
           notify_data: "{{ notify_data }}"
           notify_persistent: "{{ notify_persistent }}"
+          notify_channel: "{{ notify_channel }}"
   - alias: Zusätzliche Aktionen
     if:
       - condition: template
